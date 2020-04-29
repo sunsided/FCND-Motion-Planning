@@ -1,3 +1,8 @@
+# -*- coding: utf-8 -*-
+"""
+Solution to the 3D Motion Planning project.
+"""
+
 import argparse
 import time
 import msgpack
