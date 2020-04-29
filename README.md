@@ -45,19 +45,25 @@ It is kept here for reference, as the project rubric requires it.
 As mentioned above, `motion_planning.py` is based upon the `backyard_flyer.py` solution which involves
 taking off, flying a square, then landing safely.
 
-As before, waypoints are calculated once and then issued to the drone. In the Backyard Flyer solution,
-waypoints were issued individually by calling the `Drone` class'`cmd_position(north, east, altitude, heading)`;
-here however, we're sending off an entire list of waypoints by calling `send_waypoints()`. This, in turn, makes
-use of a somewhat undocumented functionality of the underlying [MAVLink](https://github.com/ArduPilot/pymavlink)
+As before, waypoints are calculated once and then issued to the drone. In both solutions,
+waypoints are issued individually by calling the `Drone` class'`cmd_position(north, east, altitude, heading)`;
+here however, we're sending off an entire list of waypoints in addition by calling `send_waypoints()`. 
+This, in turn, makes use of a somewhat undocumented functionality of the underlying [MAVLink](https://github.com/ArduPilot/pymavlink)
 connection.
 
 What used to be `calculate_box()` in the Backyard Flyer was now replaced with `plan_path()`. For this,
 an extra state `PLANNING` was introduced in the `States` enum, to be issued between `ARMING` and `TAKEOFF`. 
 
-The following shows the output of the `motion_planning.py` when run off-the-shelf (as of commit `bb51472b`):
+Specifically, the `backyard_flyer.py` solution code has these state transitions:
 
-<details>
- <summary>Console Output</summary>
+![States of the Backyard Flyer solution](misc/backyard-flyer-states.png)
+
+For comparison, state transitions of the `motion_planning.py` starter code look like this:
+
+![States of the Motion Planniung starter code](misc/motion-planner-states.png)
+
+The following output of the `motion_planning.py` when run off-the-shelf (as of commit `bb51472b`) gives
+a nice overview of the general process. Note that some lines were removed for brevity.
 
 ```
 Logs/NavLog.txt
@@ -86,5 +92,3 @@ disarm transition
 manual transition
 Closing connection ...
 ```
-
-</details>
