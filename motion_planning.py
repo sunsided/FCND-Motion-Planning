@@ -40,12 +40,15 @@ class MotionPlanning(Drone):
         self.register_callback(MsgID.LOCAL_VELOCITY, self.velocity_callback)
         self.register_callback(MsgID.STATE, self.state_callback)
 
+    def close_to_target(self, deadband: float) -> bool:
+        return np.linalg.norm(self.target_position[0:2] - self.local_position[0:2]) < deadband
+
     def local_position_callback(self):
         if self.flight_state == States.TAKEOFF:
             if -1.0 * self.local_position[2] > 0.95 * self.target_position[2]:
                 self.waypoint_transition()
         elif self.flight_state == States.WAYPOINT:
-            if np.linalg.norm(self.target_position[0:2] - self.local_position[0:2]) < 1.0:
+            if self.close_to_target(1.0):
                 if len(self.waypoints) > 0:
                     self.waypoint_transition()
                 else:
