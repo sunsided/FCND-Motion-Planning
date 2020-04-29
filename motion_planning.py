@@ -112,6 +112,10 @@ class MotionPlanning(Drone):
     def send_waypoints(self):
         print("Sending waypoints to simulator ...")
         data = msgpack.dumps(self.waypoints)
+
+        # A bug waiting to happen here, but this is how the original code
+        # implemented sending data via MAVLink.
+        # noinspection PyProtectedMember
         self.connection._master.write(data)
 
     def plan_path(self):
