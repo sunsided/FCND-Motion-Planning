@@ -1,11 +1,11 @@
 # FCND - 3D Motion Planning
 ![Quad Image](./misc/enroute.png)
 
-This project is a continuation of the Backyard Flyer project where you executed a simple square shaped flight path. 
-In this project you will integrate the techniques that you have learned throughout the last several lessons to plan a
-path through an urban environment. Check out the [project rubric](RUBRIC.md)
-([original link](https://review.udacity.com/#!/rubrics/1534/view)) for more detail on what constitutes a
-passing submission.
+This project is a continuation of the [Backyard Flyer](https://github.com/sunsided/FCND-Backyard-Flyer)
+project where we executed a simple square shaped flight path. 
+It integrates techniques to plan a path through an urban environment. Check out the [project rubric](RUBRIC.md)
+([original link](https://review.udacity.com/#!/rubrics/1534/view)) for more detail on how this implementation
+is differing from the starter code forked off the [original repo](https://github.com/udacity/FCND-Backyard-Flyer).
 
 ## To complete this project on your local machine, follow these instructions:
 ### Step 1: Download the Simulator
