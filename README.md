@@ -42,17 +42,18 @@ It is kept here for reference, as the project rubric requires it.
 
 ### Starter Code
 
-As mentioned above, `motion_planning.py` is based upon the `backyard_flyer.py` solution which involves
-taking off, flying a square, then landing safely.
+As mentioned above, `motion_planning.py` is based on the `backyard_flyer.py` solution
+which, itself, involves taking off, flying a square, then landing safely.
 
-As before, waypoints are calculated once and then issued to the drone. In both solutions,
-waypoints are issued individually by calling the `Drone` class'`cmd_position(north, east, altitude, heading)`;
-here however, we're sending off an entire list of waypoints in addition by calling `send_waypoints()`. 
-This, in turn, makes use of a somewhat undocumented functionality of the underlying [MAVLink](https://github.com/ArduPilot/pymavlink)
-connection.
+As before, waypoints are calculated exactly once in the beginning of the mission.
+In both solutions, they are issued individually by calling the `Drone` class' `cmd_position(north, east, altitude, heading)`;
+here however, we're now sending off an entire list of waypoints in addition for visualization 
+by calling `send_waypoints()`. This, in turn, makes use of a somewhat undocumented
+functionality of the underlying [MAVLink](https://github.com/ArduPilot/pymavlink) connection.
 
-What used to be `calculate_box()` in the Backyard Flyer was now replaced with `plan_path()`. For this,
-an extra state `PLANNING` was introduced in the `States` enum, to be issued between `ARMING` and `TAKEOFF`. 
+What used to be `calculate_box()` in the Backyard Flyer was now replaced with `plan_path()`.
+For this, an extra state `PLANNING` was introduced in the `States` enum, to be executed between
+`ARMING` and `TAKEOFF`. 
 
 Specifically, the `backyard_flyer.py` solution code has these state transitions:
 
@@ -60,9 +61,9 @@ Specifically, the `backyard_flyer.py` solution code has these state transitions:
 
 For comparison, state transitions of the `motion_planning.py` starter code look like this:
 
-![States of the Motion Planniung starter code](misc/motion-planner-states.png)
+![States of the Motion Planning starter code](misc/motion-planner-states.png)
 
-The following output of the `motion_planning.py` when run off-the-shelf (as of commit `bb51472b`) gives
+The following output of `motion_planning.py` when run off-the-shelf (as of commit `bb51472b`) gives
 a nice overview of the general process. Note that some lines were removed for brevity.
 
 ```
