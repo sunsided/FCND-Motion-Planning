@@ -150,20 +150,26 @@ class MotionPlanning(Drone):
 
         self.target_position[2] = TARGET_ALTITUDE
 
-        # Rubric point: Read lat0, lon0 from colliders into floating point values
+        # Rubric points:
+        # - Read lat0, lon0 from colliders into floating point values
+        # - Set home position to (lon0, lat0, 0)
         home_latlon = self.read_lat0lon0(self.colliders_file)
-
-        # Rubric point: Set home position to (lon0, lat0, 0)
         self.set_home_position(home_latlon.longitude, home_latlon.latitude, 0)
 
-        # Rubric point: Retrieve current global position
+        # Rubric points:
+        # - Retrieve current global position
+        # - Convert to current local position using global_to_local()
         geodetic_coords = [self._longitude, self._latitude, self._altitude]
-
-        # Rubric point: Convert to current local position using global_to_local()
         local_position = global_to_local(global_position=geodetic_coords, global_home=self.global_home)
+        local_position_difference = np.linalg.norm(np.subtract(self.local_position, local_position))
 
-        print('global home {0}, position {1}, local position {2}'.format(self.global_home, self.global_position,
-                                                                         self.local_position))
+        # The values do differ; let's just make sure here that nothing too weird is going on.
+        assert (np.isclose(local_position_difference, 0, rtol=1, atol=1)), \
+            f"Calculated local position {local_position} differs " \
+            f"from provided one {self.local_position} by {local_position_difference} m."
+
+        print('global home {0}, position {1}, local position {2} (differs by {3:.4} m)'.format(
+            self.global_home, self.global_position, self.local_position, local_position_difference))
 
         # Read in obstacle map
         data = np.loadtxt(self.colliders_file, delimiter=',', dtype='Float64', skiprows=2)
@@ -171,13 +177,17 @@ class MotionPlanning(Drone):
         # Define a grid for a particular altitude and safety margin around obstacles
         grid, heightmap, north_offset, east_offset = create_grid(data, TARGET_ALTITUDE, SAFETY_DISTANCE)
         print("North offset = {0}, east offset = {1}".format(north_offset, east_offset))
+
         # Define starting point on the grid (this is just grid center)
-        grid_start = (-north_offset, -east_offset)
-        # TODO: convert start position to current position rather than map center
+        # Rubric point: convert start position to current position rather than map center
+        # NOTE that I used the self.local_position here instead of the local_position
+        #      we just calculated manually. The values do seem to diverge, so I'll simply
+        #      rely on what the Drone base class assumes to be correct.
+        grid_start = (int(self.local_position[0] - north_offset), int(self.local_position[1] - east_offset))
 
         # Set goal as some arbitrary position on the grid
+        # Rubric point: adapt to set goal as latitude / longitude position and convert
         grid_goal = (-north_offset + 10, -east_offset + 10)
-        # TODO: adapt to set goal as latitude / longitude position and convert
 
         # Run A* to find a path from start to goal
         # TODO: add diagonal motions with a cost of sqrt(2) to your A* implementation
