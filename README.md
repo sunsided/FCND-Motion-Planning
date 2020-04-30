@@ -63,6 +63,26 @@ For comparison, state transitions of the `motion_planning.py` starter code look 
 
 ![States of the Motion Planning starter code](misc/motion-planner-states.png)
 
+In `plan_path()`, first a target altitude and safety margin from obstacles is defined.
+We then load the environment from `colliders.csv` and discretize it using `create_grid()`.
+A goal position is generated in ~14m distance (10m to the north and east), then the A\*
+algorithm is used to plan a path from start to goal. 
+However, the starter code implementation of the planner is constrained to vertical and horizontal motion like so:
+
+```python
+class Action(Enum):
+    WEST = (0, -1, 1)
+    EAST = (0, 1, 1)
+    NORTH = (-1, 0, 1)
+    SOUTH = (1, 0, 1)
+```
+
+(Note that the actions are `(north, east, cost)` rather than `(x, y, cost)`.)
+
+As a result of this constraint, the generated path moves along the grid cells in a zig-zag pattern.
+
+![](misc/stairs-smaller.jpg)
+
 The following output of `motion_planning.py` when run off-the-shelf (as of commit `bb51472b`) gives
 a nice overview of the general process. Note that some lines were removed for brevity.
 
