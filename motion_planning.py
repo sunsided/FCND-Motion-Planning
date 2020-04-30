@@ -179,7 +179,7 @@ class MotionPlanning(Drone):
 
         # Convert path to waypoints
         waypoints = [self.to_waypoint(p, north_offset, east_offset, TARGET_ALTITUDE) for p in path]
-        self.interpolate_headings(waypoints, fix_initial=True)
+        self.interpolate_headings(waypoints, fix_first=True)
         # Set self.waypoints
         self.waypoints = waypoints
         # TODO: send waypoints to sim (this is just for visualization of waypoints)
@@ -200,10 +200,13 @@ class MotionPlanning(Drone):
         return (theta + np.pi) % (2*np.pi) - np.pi
 
     @staticmethod
-    def interpolate_headings(waypoints: List[Union[List[float], Tuple[float, float, float, float], np.ndarray]], fix_initial: bool=False) -> None:
+    def interpolate_headings(waypoints: List[Union[List[float], Tuple[float, float, float, float], np.ndarray]],
+                             fix_first: bool=False, fix_last: bool=True) -> None:
         """
         Interpolates headings between two adjacent waypoints.
         :param waypoints: The waypoint list to update in place.
+        :param fix_first: Whether to correct the first waypoint in the list.
+        :param fix_last: Whether to correct the last waypoint in the list.
         """
         # This uses a naive scheme to interpolate headings between two adjacent
         # waypoints. We could trivially set each waypoint's heading to be
@@ -231,8 +234,8 @@ class MotionPlanning(Drone):
         # Since we remove waypoints from the beginning of the list, we leave the first
         # waypoint untouched.
         if len(waypoints) > 1:
-            waypoints[0][3] = waypoints[1][3] if fix_initial else waypoints[0][3]
-            waypoints[-1][3] = waypoints[-2][3]
+            waypoints[0][3] = waypoints[1][3] if fix_first else waypoints[0][3]
+            waypoints[-1][3] = waypoints[-2][3] if fix_last else waypoints[-1][3]
 
     def start(self):
         self.start_log("Logs", "NavLog.txt")
