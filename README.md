@@ -7,7 +7,7 @@ It integrates techniques to plan a path through an urban environment. Check out 
 ([original link](https://review.udacity.com/#!/rubrics/1534/view)) for more detail on how this implementation
 is differing from the starter code forked off the [original repo](https://github.com/udacity/FCND-Backyard-Flyer).
 
-## Environment
+## Python environment
 
 This project is running in a simulated environment. You can download the Linux version of the simulator from from the
 releases of the [sunsided/fcnd-notebooks](https://github.com/sunsided/fcnd-notebooks) GitHub repo.
@@ -37,6 +37,32 @@ python motion_planning.py
 Note that the file `backyard_flyer.py` is the solution to the [Backyard Flyer](https://github.com/sunsided/FCND-Backyard-Flyer)
 project and is meant to be run against the _Backyard Flyer_ simulator scene.
 It is kept here for reference, as the project rubric requires it.
+
+## Your friend, the map
+
+The simulator scene is modeled after Downtown San Francisco with the
+starting location somewhere around [Market Street](https://goo.gl/maps/Ka4fKuYARDVT5aAM8)
+(map code `QJV3+57`). Here's an aerial picture of the environment:
+
+![Downtown San Francisco](misc/map.png)
+
+As far as the planner is concerned, the map is initially discretized into
+a grid. With height information added in, it looks like this:
+
+![Height map](misc/heightmap.jpg)
+
+Note that the height scale in this plot is dimensionless
+(no specification is available for `colliders.csv`), but can
+be assumed to be in meters.
+
+During discretization, we are free to choose any minimum flying
+altitude, as well as any safety margin to obstacles such as buildings
+and trees. The following picture shows different variations of the altitude
+(0m, 10m and 20m), as well as the safety margin (5m and 10m); in these
+plots, bright spaces resemble safe areas to fly, whereas darker blue areas resemble
+inadmissible areas:
+
+![Obstacle map](misc/obstacles.jpg)
 
 ## Project Description
 
@@ -113,3 +139,4 @@ disarm transition
 manual transition
 Closing connection ...
 ```
+
