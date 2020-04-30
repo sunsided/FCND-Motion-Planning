@@ -7,7 +7,7 @@ import argparse
 import time
 import msgpack
 from enum import Enum, auto
-from typing import Optional
+from typing import Optional, Union, Tuple, List
 
 import numpy as np
 
@@ -178,11 +178,61 @@ class MotionPlanning(Drone):
         # TODO (if you're feeling ambitious): Try a different approach altogether!
 
         # Convert path to waypoints
-        waypoints = [[p[0] + north_offset, p[1] + east_offset, TARGET_ALTITUDE, 0] for p in path]
+        waypoints = [self.to_waypoint(p, north_offset, east_offset, TARGET_ALTITUDE) for p in path]
+        self.interpolate_headings(waypoints, fix_initial=True)
         # Set self.waypoints
         self.waypoints = waypoints
         # TODO: send waypoints to sim (this is just for visualization of waypoints)
         self.send_waypoints()
+
+    @staticmethod
+    def to_waypoint(point: Union[List[float], Tuple[float, float, float, float], np.ndarray],
+                    north_offset: float, east_offset: float, altitude: float) -> List[float]:
+        return [point[0] + north_offset, point[1] + east_offset, altitude, 0]
+
+    @staticmethod
+    def wrap_angle(theta: float) -> float:
+        """
+        Converts an angle to -pi .. pi range (so 181 degree becomes -179, and -181 degree becomes 179).
+        :param theta: The angle in radians.
+        :return: The angle in radians wrapped to the range of -pi .. pi.
+        """
+        return (theta + np.pi) % (2*np.pi) - np.pi
+
+    @staticmethod
+    def interpolate_headings(waypoints: List[Union[List[float], Tuple[float, float, float, float], np.ndarray]], fix_initial: bool=False) -> None:
+        """
+        Interpolates headings between two adjacent waypoints.
+        :param waypoints: The waypoint list to update in place.
+        """
+        # This uses a naive scheme to interpolate headings between two adjacent
+        # waypoints. We could trivially set each waypoint's heading to be
+        # the angle from the previous or to the next one. However, this would
+        # result in constantly alternating headings on a simple, unpruned,
+        # nondiagonal-movement-only planning grid as it was used in the starter
+        # code. By interpolating the headings between the previous and next
+        # waypoint, motion should be a lot smoother even under bad conditions.
+        # When following a "staircase" like path, all headings will be diagonal
+        # along the mean trajectory.
+        for w in range(1, len(waypoints)-1):
+            p0 = waypoints[w-1]
+            p1 = waypoints[w]
+            p2 = waypoints[w+1]
+
+            theta_0_1 = np.arctan2((p1[1] - p0[1]), (p1[0] - p0[0]))
+            theta_1_0 = np.arctan2((p2[1] - p1[1]), (p2[0] - p1[0]))
+
+            theta = MotionPlanning.wrap_angle((theta_0_1 + theta_1_0) * 0.5)
+            p1[3] = theta
+
+        # Set very last waypoint to the previous waypoint's heading. If no new waypoints
+        # are coming, this will smoothen the movement. If new waypoints are added, it will
+        # eventually be updated with an interpolated value.
+        # Since we remove waypoints from the beginning of the list, we leave the first
+        # waypoint untouched.
+        if len(waypoints) > 1:
+            waypoints[0][3] = waypoints[1][3] if fix_initial else waypoints[0][3]
+            waypoints[-1][3] = waypoints[-2][3]
 
     def start(self):
         self.start_log("Logs", "NavLog.txt")
