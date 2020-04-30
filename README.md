@@ -92,8 +92,10 @@ For comparison, state transitions of the `motion_planning.py` starter code look 
 In `plan_path()`, first a target altitude and safety margin from obstacles is defined.
 We then load the environment from `colliders.csv` and discretize it using `create_grid()`.
 A goal position is generated in ~14m distance (10m to the north and east), then the A\*
-algorithm is used to plan a path from start to goal. 
-However, the starter code implementation of the planner is constrained to vertical and horizontal motion like so:
+algorithm is used to plan a path from start to goal (`a_star()` method), where the heuristic
+is implemented using the Euclidean distance.
+However, the starter code implementation of the planner is constrained to vertical and 
+horizontal motion like so:
 
 ```python
 class Action(Enum):
