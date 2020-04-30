@@ -7,6 +7,7 @@ import argparse
 import time
 import msgpack
 from enum import Enum, auto
+from typing import Optional
 
 import numpy as np
 
@@ -36,9 +37,10 @@ class MotionPlanning(Drone):
         self.waypoints = []
         self.in_mission = True
         self.check_state = {}
+        self.flight_state = None  # type: Optional[States]
 
         # initial state
-        self.flight_state = States.MANUAL
+        self.set_state(States.MANUAL)
 
         # register all your callbacks here
         self.register_callback(MsgID.LOCAL_POSITION, self.local_position_callback)
@@ -48,11 +50,17 @@ class MotionPlanning(Drone):
     def close_to_target(self, deadband: float) -> bool:
         return np.linalg.norm(self.target_position[0:2] - self.local_position[0:2]) < deadband
 
+    def in_state(self, state: States) -> bool:
+        return state == self.flight_state
+
+    def set_state(self, state: States):
+        self.flight_state = state
+
     def local_position_callback(self):
-        if self.flight_state == States.TAKEOFF:
+        if self.in_state(States.TAKEOFF):
             if -1.0 * self.local_position[2] > 0.95 * self.target_position[2]:
                 self.waypoint_transition()
-        elif self.flight_state == States.WAYPOINT:
+        elif self.in_state(States.WAYPOINT):
             if self.close_to_target(1.0):
                 if len(self.waypoints) > 0:
                     self.waypoint_transition()
@@ -61,55 +69,55 @@ class MotionPlanning(Drone):
                         self.landing_transition()
 
     def velocity_callback(self):
-        if self.flight_state == States.LANDING:
+        if self.in_state(States.LANDING):
             if self.global_position[2] - self.global_home[2] < 0.1:
                 if abs(self.local_position[2]) < 0.01:
                     self.disarming_transition()
 
     def state_callback(self):
         if self.in_mission:
-            if self.flight_state == States.MANUAL:
+            if self.in_state(States.MANUAL):
                 self.arming_transition()
-            elif self.flight_state == States.ARMING:
+            elif self.in_state(States.ARMING):
                 if self.armed:
                     self.plan_path()
-            elif self.flight_state == States.PLANNING:
+            elif self.in_state(States.PLANNING):
                 self.takeoff_transition()
-            elif self.flight_state == States.DISARMING:
+            elif self.in_state(States.DISARMING):
                 if ~self.armed & ~self.guided:
                     self.manual_transition()
 
     def arming_transition(self):
-        self.flight_state = States.ARMING
+        self.set_state(States.ARMING)
         print("arming transition")
         self.arm()
         self.take_control()
 
     def takeoff_transition(self):
-        self.flight_state = States.TAKEOFF
+        self.set_state(States.TAKEOFF)
         print("takeoff transition")
         self.takeoff(self.target_position[2])
 
     def waypoint_transition(self):
-        self.flight_state = States.WAYPOINT
+        self.set_state(States.WAYPOINT)
         print("waypoint transition")
         self.target_position = self.waypoints.pop(0)
         print('target position', self.target_position)
         self.cmd_position(self.target_position[0], self.target_position[1], self.target_position[2], self.target_position[3])
 
     def landing_transition(self):
-        self.flight_state = States.LANDING
+        self.set_state(States.LANDING)
         print("landing transition")
         self.land()
 
     def disarming_transition(self):
-        self.flight_state = States.DISARMING
+        self.set_state(States.DISARMING)
         print("disarm transition")
         self.disarm()
         self.release_control()
 
     def manual_transition(self):
-        self.flight_state = States.MANUAL
+        self.set_state(States.MANUAL)
         print("manual transition")
         self.stop()
         self.in_mission = False
@@ -124,7 +132,7 @@ class MotionPlanning(Drone):
         self.connection._master.write(data)
 
     def plan_path(self):
-        self.flight_state = States.PLANNING
+        self.set_state(States.PLANNING)
         print("Searching for a path ...")
         TARGET_ALTITUDE = 5
         SAFETY_DISTANCE = 5
