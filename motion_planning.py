@@ -6,8 +6,9 @@ Solution to the 3D Motion Planning project.
 import argparse
 import time
 import msgpack
+import re
 from enum import Enum, auto
-from typing import Optional, Union, Tuple, List
+from typing import Optional, Union, Tuple, List, NamedTuple
 
 import numpy as np
 
@@ -16,6 +17,9 @@ from udacidrone import Drone
 from udacidrone.connection import MavlinkConnection
 from udacidrone.messaging import MsgID
 from udacidrone.frame_utils import global_to_local
+
+
+LatLon = NamedTuple('LatLon', [('latitude', float), ('longitude', float)])
 
 
 class States(Enum):
@@ -33,6 +37,7 @@ class MotionPlanning(Drone):
     def __init__(self, connection):
         super().__init__(connection)
 
+        self.colliders_file = 'colliders.csv'
         self.target_position = np.array([0.0, 0.0, 0.0])
         self.waypoints = []
         self.in_mission = True
@@ -145,18 +150,23 @@ class MotionPlanning(Drone):
 
         self.target_position[2] = TARGET_ALTITUDE
 
-        # TODO: read lat0, lon0 from colliders into floating point values
+        # Rubric point: Read lat0, lon0 from colliders into floating point values
+        home_latlon = self.read_lat0lon0(self.colliders_file)
 
-        # TODO: set home position to (lon0, lat0, 0)
+        # Rubric point: Set home position to (lon0, lat0, 0)
+        self.set_home_position(home_latlon.longitude, home_latlon.latitude, 0)
 
-        # TODO: retrieve current global position
+        # Rubric point: Retrieve current global position
+        geodetic_coords = [self._longitude, self._latitude, self._altitude]
 
-        # TODO: convert to current local position using global_to_local()
+        # Rubric point: Convert to current local position using global_to_local()
+        local_position = global_to_local(global_position=geodetic_coords, global_home=self.global_home)
 
         print('global home {0}, position {1}, local position {2}'.format(self.global_home, self.global_position,
                                                                          self.local_position))
+
         # Read in obstacle map
-        data = np.loadtxt('colliders.csv', delimiter=',', dtype='Float64', skiprows=2)
+        data = np.loadtxt(self.colliders_file, delimiter=',', dtype='Float64', skiprows=2)
 
         # Define a grid for a particular altitude and safety margin around obstacles
         grid, heightmap, north_offset, east_offset = create_grid(data, TARGET_ALTITUDE, SAFETY_DISTANCE)
@@ -184,6 +194,29 @@ class MotionPlanning(Drone):
         self.waypoints = waypoints
         # TODO: send waypoints to sim (this is just for visualization of waypoints)
         self.send_waypoints()
+
+    def read_lat0lon0(self, colliders_file: str) -> LatLon:
+        """
+        Parses the home latitude and longitude from the provided colliders file.
+        :param colliders_file: The colliders file to load.
+        :return: The home latitude and longitude.
+        """
+        with open(colliders_file, 'r') as f:
+            line = f.readline()
+            return self.parse_lat0lon0(line)
+
+    @staticmethod
+    def parse_lat0lon0(line: str) -> LatLon:
+        """
+        Parses the home latitude and longitude from the provided string.
+        :param line: The line to parse.
+        :return: The home latitude and longitude.
+        """
+        match = re.match(r'lat0 (?P<lat>[+-]?\d+(\.\d*)?), lon0 (?P<lon>[+-]?\d+(\.\d*)?)', line, re.IGNORECASE)
+        assert match, f'Invalid input: {line}'
+        lat = float(match.group('lat'))
+        lon = float(match.group('lon'))
+        return LatLon(latitude=lat, longitude=lon)
 
     @staticmethod
     def to_waypoint(point: Union[List[float], Tuple[float, float, float, float], np.ndarray],

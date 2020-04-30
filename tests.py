@@ -29,5 +29,14 @@ def test_sequential_waypoints_have_identical_heading():
     assert(np.all([np.isclose(wp[3], wps[0][3]) for wp in wps]))
 
 
+@pytest.mark.parametrize("test_input,expected_lat,expected_lon",
+                         [('lat0 37.792480, lon0 -122.397450', 37.792480, -122.397450),
+                          ('lat0 0, lon0 0', 0, 0),
+                          ('lat0 -42., lon0 42.', -42, 42)])
+def test_parse_lat0lon0(test_input, expected_lat, expected_lon):
+    latlon = MotionPlanning.parse_lat0lon0(test_input)
+    assert(np.isclose(latlon.latitude, expected_lat) and np.isclose(latlon.longitude, expected_lon))
+
+
 if __name__ == '__main__':
     unittest.main()
