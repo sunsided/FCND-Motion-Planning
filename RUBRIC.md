@@ -13,7 +13,7 @@
 ## Explain the Starter Code
 
 - **Criteria:**
-  Test that `motion_planning.py` is a modified version of `backyard_flyer_solution.py` for simple
+  Test that `motion_planning.py` is a modified version of `backyard_flyer.py` for simple
   path planning. Verify that both scripts work. Then, compare them side by side and describe in
   words how each of the modifications implemented in `motion_planning.py` is functioning.
 
