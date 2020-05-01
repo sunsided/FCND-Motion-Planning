@@ -277,7 +277,7 @@ def heuristic(position: GridPosition, goal_position: GridPosition) -> float:
 
 dropped the execution time by an entire order of magnitude. In the stand-alone
 application, the algorithm now executes in ~0.06 seconds, whereas in the simulator,
-planning now finishes after about 0.12 seconds.
+planning now finishes after about 0.12 seconds (again, for a specific goal location).
 
 ![](misc/astar-performance-fixed.jpg) 
 
