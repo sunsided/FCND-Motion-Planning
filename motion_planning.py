@@ -419,7 +419,8 @@ class MotionPlanning(Drone):
         :param north_offset: The north offset of the grid into the map.
         :param east_offset: The east offset of the grid into the map.
         """
-        print("North offset = {0}, east offset = {1}".format(north_offset, east_offset))
+        print(f'Grid registered with size {grid.shape[0]} x {grid.shape[1]}.')
+        print(f'North offset = {north_offset}, east offset = {east_offset}.')
         self.grid = grid
         self.height_map = heightmap
         self.grid_offsets = (north_offset, east_offset)
