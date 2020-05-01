@@ -83,7 +83,6 @@ class Action(Enum):
     def is_valid(self, grid: np.ndarray, current_node: Position) -> bool:
         """
         Determines whether the specified action is valid, given the the current node and the grid.
-        :param action: The action to inspect.
         :param grid: The grid to verify the action for.
         :param current_node: The current node to which to apply the action.
         :return: True if the action is admissible; False otherwise.

@@ -249,6 +249,14 @@ be built into a path planner:
 As of the starter code, the provided A\* planner only supported horizontal
 and vertical movement. Diagonal movement was added with a cost of `sqrt(2)`.
 
+What struck me as odd is how terribly bad the A\* implementation performed
+even with only four actions on a 2-dimensional grid. Running a performance
+analysis showed that most of the algorithm's time is spent in calls to
+the `heuristic()` function and the `put` operation of the `PriorityQueue` class.
+The `heuristic` itself only called out to `np.linalg.norm` for the Euclidean distance.
+
+![](misc/astar-performance.jpg)
+
 ## Mission complete
 
 At the end of the day, always park your drone in a safe spot
