@@ -280,7 +280,8 @@ class MotionPlanning(Drone):
 
         print("Generating mission ...")
 
-        self.add_mission_waypoint(self.create_waypoint_from_global(latitude=37.792405, longitude=-122.398908, altitude=10.0))
+        # Just so the tour is a bit longer
+        self.add_mission_waypoint(self.create_waypoint_from_global(latitude=37.796185, longitude=-122.393454, altitude=1.0))
         self.add_mission_waypoint(self.create_waypoint_from_global(latitude=37.796612, longitude=-122.398877, altitude=1.0))
 
         # TODO: When 2.5D/3D motion planning is allowed, re-enable these waypoints
@@ -290,6 +291,7 @@ class MotionPlanning(Drone):
         # This one is inacessible due to a simulator / colliders mismatch
         # self.add_mission_waypoint(self.create_waypoint_from_global(latitude=37.793106, longitude=-122.394933, altitude=1.0))
 
+        self.add_mission_waypoint(self.create_waypoint_from_global(latitude=37.792405, longitude=-122.398908, altitude=10.0))
         self.add_mission_waypoint(self.create_waypoint_from_global(latitude=37.790642, longitude=-122.397818, altitude=1.0))
 
     def create_waypoint_from_global(self, longitude: float, latitude: float, altitude: float) -> Waypoint:
