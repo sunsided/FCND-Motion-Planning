@@ -1,8 +1,8 @@
 # Project Specification: 3D Motion Planning
 
-## Writeup
+## ✔️ Writeup
 
-- **Criteria:**
+- ✔️ **Criteria:**
   Provide a Writeup / README that includes all the rubric points and how you addressed each one.
   You can submit your writeup as markdown or PDF.
 
@@ -10,9 +10,9 @@
   The writeup / README should include a statement and supporting figures / images that explain
   how each rubric item was addressed, and specifically where in the code each step was handled.
 
-## Explain the Starter Code
+## ✔️ Explain the Starter Code
 
-- **Criteria:**
+- ✔️ **Criteria:**
   Test that `motion_planning.py` is a modified version of `backyard_flyer.py` for simple
   path planning. Verify that both scripts work. Then, compare them side by side and describe in
   words how each of the modifications implemented in `motion_planning.py` is functioning.
@@ -26,7 +26,7 @@
 
 ## Implementing Your Path Planning Algorithm
 
-- **Criteria:**
+- ✔️ **Criteria:**
   In the starter code, we assume that the home position is where the drone first initializes,
   but in reality you need to be able to start planning from anywhere. Modify your code to read
   the global home location from the first line of the `colliders.csv` file and set that position
@@ -36,7 +36,7 @@
   Here you should read the first line of the CSV file, extract `lat0` and `lon0` as floating point
   values and use the `self.set_home_position()` method to set global home.
 
-- **Criteria:**
+- ✔️ **Criteria:**
   In the starter code, we assume the drone takes off from map center, but you'll need to be able
   to takeoff from anywhere. Retrieve your current position in geodetic coordinates from
   `self._latitude`, `self._longitude` and `self._altitude`. Then use the utility function
@@ -47,7 +47,7 @@
   Here as long as you successfully determine your local position relative to global home
   you'll be all set.
 
-- **Criteria:**
+- ✔️ **Criteria:**
   In the starter code, the `start` point for planning is hardcoded as map center.
   Change this to be your current local position.
   

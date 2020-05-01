@@ -155,3 +155,34 @@ manual transition
 Closing connection ...
 ```
 
+### Implementing Path Planning
+
+#### Setting the home position
+
+As far as the starter code is concerned, the Drone starts its life in the center
+of the loaded map and then navigates from there. This holds true for the
+simulator, but doesn't in reality. To emulate the behavior of being localized in
+the real world, initial geodesic coordinates are loaded from the first
+line of `colliders.csv`:
+
+```
+lat0 37.792480, lon0 -122.397450
+```
+
+In here, `lat0` encodes the position latitude of `37.792480` degree north
+and a longitude of `-122.397450` degree east (where negative east, by definition, is west).
+As mentioned above, this locates us right [here](https://www.google.de/maps/place/37%C2%B047'32.9%22N+122%C2%B023'50.8%22W/@37.79248,-122.3996387,17z)
+within San Francisco in the real world (map code `QJR3+X2`).
+
+![](misc/latitude-longitude.jpg)
+
+<details>
+
+![](misc/starting-position-zoom.webp)
+
+</details>
+
+The coordinates obtained this way are then set as the drone's home position
+via a call to `set_home_position()`. We can use this information later on
+in combination with the grid boundaries of the map to accurately position
+us in any grid cell.
