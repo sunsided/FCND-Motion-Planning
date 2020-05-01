@@ -60,8 +60,8 @@ class MotionPlanning(Drone):
         self.grid = None  # type: Optional[np.ndarray]
         self.height_map = None  # type: Optional[np.ndarray]
         self.grid_offsets = (0., 0.)  # type: Tuple[float, float]
-        self.target_altitude = 5  # type: int
-        self.safety_distance = 1  # type: int
+        self.target_altitude = 10  # type: int
+        self.safety_distance = 2  # type: int
 
         # initial state
         self.set_state(States.MANUAL)
@@ -99,7 +99,7 @@ class MotionPlanning(Drone):
             if -1.0 * self.local_position[2] > 0.95 * self.target_position[2]:
                 self.waypoint_transition()
         elif self.in_state(States.WAYPOINT):
-            if self.close_to_target_ned(1.0):
+            if self.close_to_target_ned(2.0):
                 if self.has_waypoints:
                     self.waypoint_transition()
                 elif self.has_mission_goals:
