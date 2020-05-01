@@ -73,34 +73,6 @@ class Action(Enum):
     SOUTH_WEST = (1, -1, SQRT2)
     NORTH_WEST = (-1, -1, SQRT2)
 
-    NORTH_10 = (-10, 0, 10.0)
-    EAST_10 = (0, 10, 10.0)
-    SOUTH_10 = (10, 0, 10.0)
-    WEST_10 = (0, -10, 10.0)
-
-    NORTH_EAST_10 = (-10, 10, 10*SQRT2)
-    SOUTH_EAST_10 = (10, 10, 10*SQRT2)
-    SOUTH_WEST_10 = (10, -10, 10*SQRT2)
-    NORTH_WEST_10 = (-10, -10, 10*SQRT2)
-
-    NORTH_NORTH_EAST = (-2, 1, SQRT5)
-    NORTH_NORTH_WEST = (-2, -1, SQRT5)
-    SOUTH_SOUTH_EAST = (2, 1, SQRT5)
-    SOUTH_SOUTH_WEST = (2, -1, SQRT5)
-    EAST_NORTH_EAST = (-1, 2, SQRT5)
-    WEST_NORTH_WEST = (-1, -2, SQRT5)
-    EAST_SOUTH_EAST = (1, 2, SQRT5)
-    WEST_SOUTH_WEST = (1, -2, SQRT5)
-
-    NORTH_NORTH_EAST_10 = (-20, 10, 10*SQRT5)
-    NORTH_NORTH_WEST_10 = (-20, -10, 10*SQRT5)
-    SOUTH_SOUTH_EAST_10 = (20, 10, 10*SQRT5)
-    SOUTH_SOUTH_WEST_10 = (20, -10, 10*SQRT5)
-    EAST_NORTH_EAST_10 = (-10, 20, 10*SQRT5)
-    WEST_NORTH_WEST_10 = (-10, -20, 10*SQRT5)
-    EAST_SOUTH_EAST_10 = (10, 20, 10*SQRT5)
-    WEST_SOUTH_WEST_10 = (10, -20, 10*SQRT5)
-
     @property
     def cost(self) -> float:
         return self.value[2]
