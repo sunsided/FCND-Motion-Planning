@@ -209,11 +209,7 @@ within San Francisco in the real world (map code `QJR3+X2`).
 
 ![](misc/latitude-longitude.jpg)
 
-<details>
-
 ![](misc/starting-position-zoom.webp)
-
-</details>
 
 The coordinates obtained this way are then set as the drone's home position
 via a call to `set_home_position()`. We can use this information later on
