@@ -7,6 +7,15 @@ in the planner as they involve flying over obstacles.
 Note that these locations do not reflect reality and you should
 absolutely not every try to fly your drone there in real life.
 
+## 37.792405 north, -122.398908 east, 10.0 m
+
+A junction just around the corner of the starting location. This
+should help testing the planner quickly, as planning long distances
+still takes a while on the grid. The altitude is just the default
+target altitude of the starter code.
+
+![](misc/locations/37.792405,-122.398908,10.0.jpg)
+
 ## 37.796612 north, -122.398877 east, 1.0 m
 
 This spot should be trivially reachable even at low altitudes.

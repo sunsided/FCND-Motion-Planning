@@ -60,7 +60,7 @@ class MotionPlanning(Drone):
         self.height_map = None  # type: Optional[np.ndarray]
         self.grid_offsets = (0., 0.)  # type: Tuple[float, float]
         self.target_altitude = 5  # type: int
-        self.safety_distance = 5  # type: int
+        self.safety_distance = 1  # type: int
 
         # initial state
         self.set_state(States.MANUAL)
@@ -245,8 +245,9 @@ class MotionPlanning(Drone):
             f"Calculated local position {local_position} differs " \
             f"from provided one {self.local_position} by {local_position_error} m."
 
-        print('global home {0}, position {1}, local position {2} (differs by {3:.4} m)'.format(
-            self.global_home, self.global_position, self.local_position, local_position_error))
+        print('global home {0}'.format(self.global_home))
+        print('local position {0} differs by {1:.4} m from calculation {2}'.format(
+            self.local_position, local_position_error, local_position))
 
     def init_mission_transition(self):
         self.set_state(States.INIT_MISSION)
@@ -257,11 +258,20 @@ class MotionPlanning(Drone):
 
         print("Generating mission ...")
 
-        # Set goal as some arbitrary position on the grid
-        # TODO: adapt to set goal as latitude / longitude position and convert
-        (north_offset, east_offset) = self.grid_offsets
-        self.add_mission_waypoint([-north_offset + 10, -east_offset, self.target_altitude, 0])
-        self.add_mission_waypoint([-north_offset + 10, -east_offset + 10, self.target_altitude, 0])
+        self.add_mission_waypoint(self.create_waypoint_from_global(latitude=37.792405, longitude=-122.398908, altitude=10.0))
+        self.add_mission_waypoint(self.create_waypoint_from_global(latitude=37.796612, longitude=-122.398877, altitude=1.0))
+
+        # TODO: When 2.5D/3D motion planning is allowed, re-enable these waypoints
+        # self.add_mission_waypoint(self.create_waypoint_from_global(latitude=37.787681, longitude=-122.399856, altitude=1.0))
+        # self.add_mission_waypoint(self.create_waypoint_from_global(latitude=37.796141, longitude=-122.394831, altitude=2.5))
+        # self.add_mission_waypoint(self.create_waypoint_from_global(latitude=37.793106, longitude=-122.394933, altitude=1.0))
+
+        self.add_mission_waypoint(self.create_waypoint_from_global(latitude=37.790642, longitude=-122.397818, altitude=1.0))
+
+    def create_waypoint_from_global(self, longitude: float, latitude: float, altitude: float) -> Waypoint:
+        geodetic_coords = [longitude, latitude, altitude]
+        local_coords = global_to_local(global_position=geodetic_coords, global_home=self.global_home)
+        return [local_coords[0], local_coords[1], -local_coords[2], 0]
 
     def plan_mission_goal_transition(self):
         self.set_state(States.PLAN_MISSION_GOAL)
@@ -281,10 +291,9 @@ class MotionPlanning(Drone):
         #      rely on what the Drone base class assumes to be correct.
         grid_start = (int(self.local_position[0] - north_offset), int(self.local_position[1] - east_offset))
 
-        # Set goal as some arbitrary position on the grid
-        # TODO: adapt to set goal as latitude / longitude position and convert
+        # Set goal as a position on the grid
         mission_waypoint = self.get_next_mission_waypoint()
-        grid_goal = (mission_waypoint[0], mission_waypoint[1])
+        grid_goal = (int(mission_waypoint[0] - north_offset), int(mission_waypoint[1] - east_offset))
 
         # Run A* to find a path from start to goal
         # TODO: add diagonal motions with a cost of sqrt(2) to your A* implementation

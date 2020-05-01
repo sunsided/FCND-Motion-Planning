@@ -68,7 +68,7 @@
 - **Criteria:**
   In the starter code, the goal position is hardcoded as some location 10 m north and 10 m east
   of map center. Modify this to be set as some arbitrary position on the grid given any geodetic
-  coordinates (latitude, longitude).
+  coordinates (latitude, longitude). ✔️
 
   **Meets specifications:**
   Minimal requirement here is to modify the code in `planning_utils()` to update the A*

@@ -221,28 +221,8 @@ and compared to the values provided by the `Drone` class in `determine_local_pos
 #### Setting the goal position(s)
 
 A couple of interesting goal positions were selected by flying around
-the map in the simulator:
-
-- `37.796612` north, `-122.398877` east, `1.0 m` altitude: 
-  This is within a u-shaped building accessible from the street.
-- `37.790642` north, `-122.397818` east, `1.0 m` altitude:
-  Just south of the home position and south-east of the
-  backyard enclosed by the tall building described below.
-  
-Some more challenging positions are:
-  
-- `37.787681` north, `-122.399856` east, `1.0 m` altitude:
-  This is close to the boundary of the map and only reachable
-  when flying over a building.
-- `37.796141` north, `-122.394831` east, `2.5 m` altitude:
-  This is within an otherworldly lake near the harbor that
-  has some nice trees growing out of it.
-- `37.793106` north, `-122.394933` east, `1.0 m` altitude:
-  Like the building on the edge of the map, this spot can
-  only be reached by flying over a building. In order to do
-  so, we need to be able to fly up to about `70 m` altitude.
-
-See [LOCATIONS.md](LOCATIONS.md) for a visualization of these spots.
+the map in the simulator; you can find a description and visualization 
+in [LOCATIONS.md](LOCATIONS.md).
 
 Thinking of these positions, there are some ideas that might
 be built into a path planner:
