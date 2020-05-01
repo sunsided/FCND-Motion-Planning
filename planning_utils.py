@@ -11,7 +11,7 @@ SQRT2 = float(np.sqrt(2))
 SQRT5 = float(np.sqrt(5))
 
 
-def create_grid(data, drone_altitude, safety_distance):
+def create_grid(data, drone_altitude, safety_distance: int, safety_altitude: int):
     """
     Returns a grid representation of a 2D configuration space
     based on given obstacle data, drone altitude and safety distance
@@ -32,7 +32,7 @@ def create_grid(data, drone_altitude, safety_distance):
     east_size = int(np.ceil(east_max - east_min))
 
     # Initialize an empty grid
-    grid = np.zeros((north_size, east_size))
+    grid = np.zeros((north_size, east_size), dtype=int)
     height_map = np.zeros((north_size, east_size))
 
     # Populate the grid with obstacles
@@ -45,9 +45,9 @@ def create_grid(data, drone_altitude, safety_distance):
             int(np.clip(east - d_east - safety_distance - east_min, 0, east_size - 1)),
             int(np.clip(east + d_east + safety_distance - east_min, 0, east_size - 1)),
         ]
-        height_map[obstacle[0]:obstacle[1] + 1, obstacle[2]:obstacle[3] + 1] = alt + d_alt
+        height_map[obstacle[0]:obstacle[1] + 1, obstacle[2]:obstacle[3] + 1] = alt + d_alt + safety_altitude
 
-        if alt + d_alt + safety_distance > drone_altitude:
+        if alt + d_alt + safety_altitude >= drone_altitude:
             grid[obstacle[0]:obstacle[1]+1, obstacle[2]:obstacle[3]+1] = 1
 
     return grid, height_map, int(north_min), int(east_min)

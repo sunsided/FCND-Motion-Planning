@@ -61,7 +61,8 @@ class MotionPlanning(Drone):
         self.height_map = None  # type: Optional[np.ndarray]
         self.grid_offsets = (0., 0.)  # type: Tuple[float, float]
         self.target_altitude = 10  # type: int
-        self.safety_distance = 2  # type: int
+        self.safety_distance = 4  # type: int
+        self.safety_altitude = 5  # type: int
 
         # initial state
         self.set_state(States.MANUAL)
@@ -214,8 +215,8 @@ class MotionPlanning(Drone):
 
         # Define a grid for a particular altitude and safety margin around obstacles
         assert self.map_data is not None
-        grid, heightmap, north_offset, east_offset = create_grid(self.map_data,
-                                                                 self.target_altitude, self.safety_distance)
+        grid, heightmap, north_offset, east_offset = create_grid(self.map_data, self.target_altitude,
+                                                                 self.safety_distance, self.safety_altitude)
         self.set_map(grid, heightmap, north_offset, east_offset)
 
     def receive_and_set_home_position(self) -> LatLon:
