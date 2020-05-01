@@ -77,7 +77,7 @@
   accomplish this step.
 
 - **Criteria:**
-  Cull waypoints from the path you determine using search.
+  Cull waypoints from the path you determine using search. ✔️
 
   **Meets specifications:**
   For this step you can use a collinearity test or ray tracing method like Bresenham.
@@ -88,7 +88,7 @@
 
 - **Criteria:**
   This is simply a check on whether it all worked. Send the waypoints and the autopilot
-  should fly you from start to goal!
+  should fly you from start to goal! ✔️
 
   **Meets specifications:**
   At the moment there is some mismatch between the colliders map and actual buildings in the
