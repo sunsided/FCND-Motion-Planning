@@ -7,7 +7,8 @@ import heapq
 GridPosition = Tuple[int, int]
 HeuristicFunction = Callable[[GridPosition, GridPosition], float]
 
-SQRT2 = np.sqrt(2)
+SQRT2 = float(np.sqrt(2))
+SQRT5 = float(np.sqrt(5))
 
 
 def create_grid(data, drone_altitude, safety_distance):
@@ -62,15 +63,43 @@ class Action(Enum):
     is the cost of performing the action.
     """
 
-    WEST = (0, -1, 1.0)
-    EAST = (0, 1, 1.0)
     NORTH = (-1, 0, 1.0)
+    EAST = (0, 1, 1.0)
     SOUTH = (1, 0, 1.0)
+    WEST = (0, -1, 1.0)
 
-    NORTH_WEST = (-1, -1, SQRT2)
     NORTH_EAST = (-1, 1, SQRT2)
-    SOUTH_WEST = (1, -1, SQRT2)
     SOUTH_EAST = (1, 1, SQRT2)
+    SOUTH_WEST = (1, -1, SQRT2)
+    NORTH_WEST = (-1, -1, SQRT2)
+
+    NORTH_10 = (-10, 0, 10.0)
+    EAST_10 = (0, 10, 10.0)
+    SOUTH_10 = (10, 0, 10.0)
+    WEST_10 = (0, -10, 10.0)
+
+    NORTH_EAST_10 = (-10, 10, 10*SQRT2)
+    SOUTH_EAST_10 = (10, 10, 10*SQRT2)
+    SOUTH_WEST_10 = (10, -10, 10*SQRT2)
+    NORTH_WEST_10 = (-10, -10, 10*SQRT2)
+
+    NORTH_NORTH_EAST = (-2, 1, SQRT5)
+    NORTH_NORTH_WEST = (-2, -1, SQRT5)
+    SOUTH_SOUTH_EAST = (2, 1, SQRT5)
+    SOUTH_SOUTH_WEST = (2, -1, SQRT5)
+    EAST_NORTH_EAST = (-1, 2, SQRT5)
+    WEST_NORTH_WEST = (-1, -2, SQRT5)
+    EAST_SOUTH_EAST = (1, 2, SQRT5)
+    WEST_SOUTH_WEST = (1, -2, SQRT5)
+
+    NORTH_NORTH_EAST_10 = (-20, 10, 10*SQRT5)
+    NORTH_NORTH_WEST_10 = (-20, -10, 10*SQRT5)
+    SOUTH_SOUTH_EAST_10 = (20, 10, 10*SQRT5)
+    SOUTH_SOUTH_WEST_10 = (20, -10, 10*SQRT5)
+    EAST_NORTH_EAST_10 = (-10, 20, 10*SQRT5)
+    WEST_NORTH_WEST_10 = (-10, -20, 10*SQRT5)
+    EAST_SOUTH_EAST_10 = (10, 20, 10*SQRT5)
+    WEST_SOUTH_WEST_10 = (10, -20, 10*SQRT5)
 
     @property
     def cost(self) -> float:
@@ -105,8 +134,12 @@ def a_star(grid: np.ndarray, h: HeuristicFunction, start: GridPosition, goal: Gr
     assert grid[start[0], start[1]] == 0, "Start is in invalid position."
     assert grid[goal[0], goal[1]] == 0, "Goal is in invalid position."
 
+    # Make sure we're not dealing with arrays.
+    start = tuple(start)
+    goal = tuple(goal)
+
     path = []  # type: List[GridPosition]
-    path_cost = 0
+    path_cost = 0.
     heap = []  # type: List[Tuple[float, GridPosition]] # Priority queue implemented as a heap
     heapq.heappush(heap, (0., start))
     visited = set(start)
@@ -129,21 +162,21 @@ def a_star(grid: np.ndarray, h: HeuristicFunction, start: GridPosition, goal: Gr
         if not same_node(current_node, start):
             current_cost = branch[current_node][0]
         else:
-            current_cost = 0.0
+            current_cost = 0.
 
         for action in possible_actions:
-            if action.is_valid(grid, current_node):
-                # get the tuple representation
-                dx, dy = action.delta
-                nx, ny = current_node[0] + dx, current_node[1] + dy
-                next_node = (nx, ny)
-                branch_cost = current_cost + action.cost
-                queue_cost = branch_cost + h(next_node, goal)
+            if not action.is_valid(grid, current_node):
+                continue
+            dx, dy = action.delta
+            nx, ny = current_node[0] + dx, current_node[1] + dy
+            next_node = (nx, ny)
+            branch_cost = current_cost + action.cost
+            queue_cost = branch_cost + h(next_node, goal)
 
-                if next_node not in visited:
-                    visited.add(next_node)
-                    branch[next_node] = (branch_cost, current_node, action)
-                    heapq.heappush(heap, (queue_cost, next_node))
+            if next_node not in visited:
+                visited.add(next_node)
+                branch[next_node] = (branch_cost, current_node, action)
+                heapq.heappush(heap, (queue_cost, next_node))
 
     if found:
         # retrace steps
