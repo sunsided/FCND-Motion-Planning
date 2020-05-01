@@ -13,7 +13,7 @@ from typing import Optional, Union, Tuple, List, NamedTuple
 
 import numpy as np
 
-from planning_utils import a_star, heuristic, create_grid
+from planning_utils import a_star, heuristic, create_grid, GridPosition
 from udacidrone import Drone
 from udacidrone.connection import MavlinkConnection
 from udacidrone.messaging import MsgID
@@ -329,7 +329,12 @@ class MotionPlanning(Drone):
 
         # Convert path to waypoints
         waypoints = [self.to_waypoint(p, north_offset, east_offset, self.target_altitude) for p in path]
+
+        # We first interpolate headings, then prune the paths.
+        # This does create a lot of wasted effort, but will ensure that we're not flying
+        # long distances in an awkward orientation
         self.interpolate_headings(waypoints, fix_first=True)
+        waypoints = self.prune_waypoints(waypoints)
 
         # Set self.waypoints
         self.waypoints = waypoints
@@ -414,6 +419,51 @@ class MotionPlanning(Drone):
         if len(waypoints) > 1:
             waypoints[0][3] = waypoints[1][3] if fix_first else waypoints[0][3]
             waypoints[-1][3] = waypoints[-2][3] if copy_last else waypoints[-1][3]
+
+    def prune_waypoints(self, path: Waypoints) -> Waypoints:
+        """
+        Culls the waypoints by removing collinear points.
+        :param path: The waypoints to cull.
+        :return: The pruned waypoints.
+        """
+        assert path is not None
+        # We're gong to mutate the list as we iterate
+        # over it. Because of that, we create a copy first.
+        pruned_path = [p for p in path]
+
+        (north_offset, east_offset) = self.grid_offsets
+
+        def point(waypoint):
+            return int(waypoint[0] - north_offset), int(waypoint[1] - east_offset)
+
+        i = 0
+        while i < len(pruned_path) - 2:
+            p1 = point(pruned_path[i])
+            p2 = point(pruned_path[i + 1])
+            p3 = point(pruned_path[i + 2])
+
+            # If the three points are not collinear, check the next
+            # thee points by setting the middle point as the new start.
+            if not self.test_collinearity_2d(p1, p2, p3):
+                i += 1
+                continue
+
+            # The three points are collinear, so remove the middle
+            # one; if we do that, the third point becomes the "new" second
+            # one. We continue just like that, collapsing all following
+            # collinear points from here on.
+            # That's bad news for the list due to constant copying,
+            # but it gets the job done.
+            pruned_path.remove(pruned_path[i + 1])
+
+        return pruned_path
+
+    @staticmethod
+    def test_collinearity_2d(p1: GridPosition, p2: GridPosition, p3: GridPosition) -> bool:
+        det = p1[0] * (p2[1] - p3[1]) + \
+              p2[0] * (p3[1] - p1[1]) + \
+              p3[0] * (p1[1] - p2[1])
+        return det == 0
 
     def start(self):
         self.start_log("Logs", "NavLog.txt")
