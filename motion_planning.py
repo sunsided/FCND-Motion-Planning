@@ -45,6 +45,13 @@ class MotionPlanning(Drone):
         self.flight_state = None  # type: Optional[States]
         self.verbose = False
 
+        # map data
+        self.grid = None  # type: Optional[np.ndarray]
+        self.heightmap = None  # type: Optional[np.ndarray]
+        self.grid_offset = (0., 0.)
+        self.target_altitude = 5  # type: int
+        self.safety_distance = 5  # type: int
+
         # initial state
         self.set_state(States.MANUAL)
 
@@ -106,8 +113,8 @@ class MotionPlanning(Drone):
 
     def takeoff_transition(self):
         self.set_state(States.TAKEOFF)
-        print("takeoff transition")
-        self.takeoff(self.target_position[2])
+        print(f"takeoff transition to {self.target_altitude} m")
+        self.takeoff(self.target_altitude)
 
     def waypoint_transition(self):
         self.set_state(States.WAYPOINT)
@@ -144,11 +151,7 @@ class MotionPlanning(Drone):
 
     def plan_path(self):
         self.set_state(States.PLANNING)
-        print("Searching for a path ...")
-        TARGET_ALTITUDE = 5
-        SAFETY_DISTANCE = 5
-
-        self.target_position[2] = TARGET_ALTITUDE
+        self.target_position[2] = self.target_altitude
 
         # Rubric points:
         # - Read lat0, lon0 from colliders into floating point values
@@ -175,8 +178,10 @@ class MotionPlanning(Drone):
         data = np.loadtxt(self.colliders_file, delimiter=',', dtype='Float64', skiprows=2)
 
         # Define a grid for a particular altitude and safety margin around obstacles
-        grid, heightmap, north_offset, east_offset = create_grid(data, TARGET_ALTITUDE, SAFETY_DISTANCE)
-        print("North offset = {0}, east offset = {1}".format(north_offset, east_offset))
+        grid, heightmap, north_offset, east_offset = create_grid(data, self.target_altitude, self.safety_distance)
+        self.set_map(grid, heightmap, north_offset, east_offset)
+
+        print("Searching for a path ...")
 
         # Define starting point on the grid (this is just grid center)
         # Rubric point: convert start position to current position rather than map center
@@ -186,19 +191,19 @@ class MotionPlanning(Drone):
         grid_start = (int(self.local_position[0] - north_offset), int(self.local_position[1] - east_offset))
 
         # Set goal as some arbitrary position on the grid
-        # Rubric point: adapt to set goal as latitude / longitude position and convert
+        # TODO: adapt to set goal as latitude / longitude position and convert
         grid_goal = (-north_offset + 10, -east_offset + 10)
 
         # Run A* to find a path from start to goal
         # TODO: add diagonal motions with a cost of sqrt(2) to your A* implementation
         # or move to a different search space such as a graph (not done here)
         print('Local Start and Goal: ', grid_start, grid_goal)
-        path, _ = a_star(grid, heuristic, grid_start, grid_goal)
+        path, _ = a_star(self.grid, heuristic, grid_start, grid_goal)
         # TODO: prune path to minimize number of waypoints
         # TODO (if you're feeling ambitious): Try a different approach altogether!
 
         # Convert path to waypoints
-        waypoints = [self.to_waypoint(p, north_offset, east_offset, TARGET_ALTITUDE) for p in path]
+        waypoints = [self.to_waypoint(p, north_offset, east_offset, self.target_altitude) for p in path]
         self.interpolate_headings(waypoints, fix_first=True)
         # Set self.waypoints
         self.waypoints = waypoints
@@ -244,7 +249,7 @@ class MotionPlanning(Drone):
 
     @staticmethod
     def interpolate_headings(waypoints: List[Union[List[float], Tuple[float, float, float, float], np.ndarray]],
-                             fix_first: bool=False, fix_last: bool=True) -> None:
+                             fix_first: bool = False, fix_last: bool = True) -> None:
         """
         Interpolates headings between two adjacent waypoints.
         :param waypoints: The waypoint list to update in place.
@@ -291,6 +296,23 @@ class MotionPlanning(Drone):
         #    pass
 
         self.stop_log()
+
+    @property
+    def map_loaded(self):
+        return self.grid is not None
+
+    def set_map(self, grid: np.ndarray, heightmap: np.ndarray, north_offset: float, east_offset: float) -> None:
+        """
+        Sets the map
+        :param grid: The discretized grid.
+        :param heightmap: The 2.5-d map of the scenery.
+        :param north_offset: The north offset of the grid into the map.
+        :param east_offset: The east offset of the grid into the map.
+        """
+        print("North offset = {0}, east offset = {1}".format(north_offset, east_offset))
+        self.grid = grid
+        self.heightmap = heightmap
+        self.grid_offset = (north_offset, east_offset)
 
 
 if __name__ == "__main__":
