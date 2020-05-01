@@ -8,6 +8,7 @@ import time
 import msgpack
 import re
 from enum import Enum, auto
+from timeit import default_timer as timer
 from typing import Optional, Union, Tuple, List, NamedTuple
 
 import numpy as np
@@ -59,8 +60,9 @@ class MotionPlanning(Drone):
         self.grid = None  # type: Optional[np.ndarray]
         self.height_map = None  # type: Optional[np.ndarray]
         self.grid_offsets = (0., 0.)  # type: Tuple[float, float]
-        self.target_altitude = 5  # type: int
-        self.safety_distance = 1  # type: int
+        self.target_altitude = 10  # type: int
+        self.safety_distance = 4  # type: int
+        self.safety_altitude = 5  # type: int
 
         # initial state
         self.set_state(States.MANUAL)
@@ -98,7 +100,7 @@ class MotionPlanning(Drone):
             if -1.0 * self.local_position[2] > 0.95 * self.target_position[2]:
                 self.waypoint_transition()
         elif self.in_state(States.WAYPOINT):
-            if self.close_to_target_ned(1.0):
+            if self.close_to_target_ned(2.0):
                 if self.has_waypoints:
                     self.waypoint_transition()
                 elif self.has_mission_goals:
@@ -213,8 +215,8 @@ class MotionPlanning(Drone):
 
         # Define a grid for a particular altitude and safety margin around obstacles
         assert self.map_data is not None
-        grid, heightmap, north_offset, east_offset = create_grid(self.map_data,
-                                                                 self.target_altitude, self.safety_distance)
+        grid, heightmap, north_offset, east_offset = create_grid(self.map_data, self.target_altitude,
+                                                                 self.safety_distance, self.safety_altitude)
         self.set_map(grid, heightmap, north_offset, east_offset)
 
     def receive_and_set_home_position(self) -> LatLon:
@@ -296,10 +298,13 @@ class MotionPlanning(Drone):
         grid_goal = (int(mission_waypoint[0] - north_offset), int(mission_waypoint[1] - east_offset))
 
         # Run A* to find a path from start to goal
-        # TODO: add diagonal motions with a cost of sqrt(2) to your A* implementation
-        # or move to a different search space such as a graph (not done here)
+        # or move to a different search space such as a graph (not done here).
         print('Local Start and Goal: ', grid_start, grid_goal)
+
+        start = timer()
         path, _ = a_star(self.grid, heuristic, grid_start, grid_goal)
+        print(f'Path planning to goal completed in {timer() - start:.3} s.')
+
         # TODO: prune path to minimize number of waypoints
         # TODO (if you're feeling ambitious): Try a different approach altogether!
 
@@ -336,8 +341,8 @@ class MotionPlanning(Drone):
         return LatLon(latitude=lat, longitude=lon)
 
     @staticmethod
-    def to_waypoint(point: Union[List[float], Tuple[float, float, float, float], np.ndarray],
-                    north_offset: float, east_offset: float, altitude: float) -> List[float]:
+    def to_waypoint(point: Union[Tuple[int, int]], north_offset: float, east_offset: float, altitude: float) \
+            -> List[float]:
         return [point[0] + north_offset, point[1] + east_offset, altitude, 0]
 
     @staticmethod
@@ -398,8 +403,8 @@ class MotionPlanning(Drone):
         self.connection.start()
 
         # Only required if they do threaded
-        # while self.in_mission:
-        #    pass
+        while self.in_mission:
+            pass
 
         self.stop_log()
 
@@ -415,7 +420,8 @@ class MotionPlanning(Drone):
         :param north_offset: The north offset of the grid into the map.
         :param east_offset: The east offset of the grid into the map.
         """
-        print("North offset = {0}, east offset = {1}".format(north_offset, east_offset))
+        print(f'Grid registered with size {grid.shape[0]} x {grid.shape[1]}.')
+        print(f'North offset = {north_offset}, east offset = {east_offset}.')
         self.grid = grid
         self.height_map = heightmap
         self.grid_offsets = (north_offset, east_offset)
@@ -425,11 +431,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--port', type=int, default=5760, help='Port number')
     parser.add_argument('--host', type=str, default='127.0.0.1', help="host address, i.e. '127.0.0.1'")
-    parser.add_argument('-v', '--verbose', dest='verbose', default=False, action='store_true',
-                        help='Enables verbose logging')
     args = parser.parse_args()
 
-    conn = MavlinkConnection('tcp:{0}:{1}'.format(args.host, args.port), timeout=60)
+    conn = MavlinkConnection('tcp:{0}:{1}'.format(args.host, args.port), timeout=300, threaded=False)
     drone = MotionPlanning(conn)
 
     time.sleep(1)

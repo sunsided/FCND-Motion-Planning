@@ -1,9 +1,17 @@
 from enum import Enum
-from queue import PriorityQueue
+from typing import Tuple, Callable, Dict, List
 import numpy as np
+import heapq
 
 
-def create_grid(data, drone_altitude, safety_distance):
+GridPosition = Tuple[int, int]
+HeuristicFunction = Callable[[GridPosition, GridPosition], float]
+
+SQRT2 = float(np.sqrt(2))
+SQRT5 = float(np.sqrt(5))
+
+
+def create_grid(data, drone_altitude, safety_distance: int, safety_altitude: int):
     """
     Returns a grid representation of a 2D configuration space
     based on given obstacle data, drone altitude and safety distance
@@ -24,7 +32,7 @@ def create_grid(data, drone_altitude, safety_distance):
     east_size = int(np.ceil(east_max - east_min))
 
     # Initialize an empty grid
-    grid = np.zeros((north_size, east_size))
+    grid = np.zeros((north_size, east_size), dtype=int)
     height_map = np.zeros((north_size, east_size))
 
     # Populate the grid with obstacles
@@ -37,9 +45,9 @@ def create_grid(data, drone_altitude, safety_distance):
             int(np.clip(east - d_east - safety_distance - east_min, 0, east_size - 1)),
             int(np.clip(east + d_east + safety_distance - east_min, 0, east_size - 1)),
         ]
-        height_map[obstacle[0]:obstacle[1] + 1, obstacle[2]:obstacle[3] + 1] = alt + d_alt
+        height_map[obstacle[0]:obstacle[1] + 1, obstacle[2]:obstacle[3] + 1] = alt + d_alt + safety_altitude
 
-        if alt + d_alt + safety_distance > drone_altitude:
+        if alt + d_alt + safety_altitude >= drone_altitude:
             grid[obstacle[0]:obstacle[1]+1, obstacle[2]:obstacle[3]+1] = 1
 
     return grid, height_map, int(north_min), int(east_min)
@@ -55,83 +63,92 @@ class Action(Enum):
     is the cost of performing the action.
     """
 
-    WEST = (0, -1, 1)
-    EAST = (0, 1, 1)
-    NORTH = (-1, 0, 1)
-    SOUTH = (1, 0, 1)
+    NORTH = (-1, 0, 1.0)
+    EAST = (0, 1, 1.0)
+    SOUTH = (1, 0, 1.0)
+    WEST = (0, -1, 1.0)
+
+    NORTH_EAST = (-1, 1, SQRT2)
+    SOUTH_EAST = (1, 1, SQRT2)
+    SOUTH_WEST = (1, -1, SQRT2)
+    NORTH_WEST = (-1, -1, SQRT2)
 
     @property
-    def cost(self):
+    def cost(self) -> float:
         return self.value[2]
 
     @property
-    def delta(self):
-        return (self.value[0], self.value[1])
+    def delta(self) -> Tuple[int, int]:
+        return self.value[0], self.value[1]
+
+    def is_valid(self, grid: np.ndarray, current_node: GridPosition) -> bool:
+        """
+        Determines whether the specified action is valid, given the the current node and the grid.
+        :param grid: The grid to verify the action for.
+        :param current_node: The current node to which to apply the action.
+        :return: True if the action is admissible; False otherwise.
+        """
+        n, m = grid.shape[0] - 1, grid.shape[1] - 1
+        x = current_node[0] + self.delta[0]
+        y = current_node[1] + self.delta[1]
+        return (0 <= x < n) and (0 <= y < m) and (grid[x, y] == 0)
 
 
-def valid_actions(grid, current_node):
-    """
-    Returns a list of valid actions given a grid and current node.
-    """
-    valid_actions = list(Action)
-    n, m = grid.shape[0] - 1, grid.shape[1] - 1
-    x, y = current_node
-
-    # check if the node is off the grid or
-    # it's an obstacle
-
-    if x - 1 < 0 or grid[x - 1, y] == 1:
-        valid_actions.remove(Action.NORTH)
-    if x + 1 > n or grid[x + 1, y] == 1:
-        valid_actions.remove(Action.SOUTH)
-    if y - 1 < 0 or grid[x, y - 1] == 1:
-        valid_actions.remove(Action.WEST)
-    if y + 1 > m or grid[x, y + 1] == 1:
-        valid_actions.remove(Action.EAST)
-
-    return valid_actions
+def same_node(a: GridPosition, b: GridPosition) -> bool:
+    return a == b
 
 
-def a_star(grid: np.ndarray, h, start, goal):
+def a_star(grid: np.ndarray, h: HeuristicFunction, start: GridPosition, goal: GridPosition)\
+        -> Tuple[List[GridPosition], float]:
     assert 0 <= goal[0] < grid.shape[0]
     assert 0 <= goal[1] < grid.shape[1]
 
     assert grid[start[0], start[1]] == 0, "Start is in invalid position."
     assert grid[goal[0], goal[1]] == 0, "Goal is in invalid position."
 
-    path = []
-    path_cost = 0
-    queue = PriorityQueue()
-    queue.put((0, start))
+    # Make sure we're not dealing with arrays.
+    start = tuple(start)
+    goal = tuple(goal)
+
+    path = []  # type: List[GridPosition]
+    path_cost = 0.
+    heap = []  # type: List[Tuple[float, GridPosition]] # Priority queue implemented as a heap
+    heapq.heappush(heap, (0., start))
     visited = set(start)
 
-    branch = {}
+    # noinspection PyTypeChecker
+    possible_actions = list(Action)  # type: List[Action]
+
+    branch = {}  # type: Dict[GridPosition, Tuple[float, GridPosition, Action]]
     found = False
 
-    while not queue.empty():
-        item = queue.get()
+    while len(heap) > 0:
+        item = heapq.heappop(heap)
         current_node = item[1]
-        if current_node == start:
-            current_cost = 0.0
-        else:
-            current_cost = branch[current_node][0]
 
-        if current_node == goal:
+        if same_node(current_node, goal):
             print('Found a path.')
             found = True
             break
-        else:
-            for action in valid_actions(grid, current_node):
-                # get the tuple representation
-                da = action.delta
-                next_node = (current_node[0] + da[0], current_node[1] + da[1])
-                branch_cost = current_cost + action.cost
-                queue_cost = branch_cost + h(next_node, goal)
 
-                if next_node not in visited:
-                    visited.add(next_node)
-                    branch[next_node] = (branch_cost, current_node, action)
-                    queue.put((queue_cost, next_node))
+        if not same_node(current_node, start):
+            current_cost = branch[current_node][0]
+        else:
+            current_cost = 0.
+
+        for action in possible_actions:
+            if not action.is_valid(grid, current_node):
+                continue
+            dx, dy = action.delta
+            nx, ny = current_node[0] + dx, current_node[1] + dy
+            next_node = (nx, ny)
+            branch_cost = current_cost + action.cost
+            queue_cost = branch_cost + h(next_node, goal)
+
+            if next_node not in visited:
+                visited.add(next_node)
+                branch[next_node] = (branch_cost, current_node, action)
+                heapq.heappush(heap, (queue_cost, next_node))
 
     if found:
         # retrace steps
@@ -149,5 +166,8 @@ def a_star(grid: np.ndarray, h, start, goal):
     return path[::-1], path_cost
 
 
-def heuristic(position, goal_position):
-    return np.linalg.norm(np.array(position) - np.array(goal_position))
+def heuristic(position: GridPosition, goal_position: GridPosition) -> float:
+    dx = position[0] - goal_position[0]
+    dy = position[1] - goal_position[1]
+    delta_sq = dx*dx + dy*dy
+    return np.sqrt(delta_sq)
