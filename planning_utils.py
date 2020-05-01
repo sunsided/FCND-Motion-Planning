@@ -1,7 +1,11 @@
 from enum import Enum
 from queue import PriorityQueue
-from typing import Tuple
+from typing import Tuple, Callable, Dict, List
 import numpy as np
+
+
+Position = Tuple[int, int]
+HeuristicFunction = Callable[[Position, Position], float]
 
 SQRT2 = np.sqrt(2)
 
@@ -81,7 +85,7 @@ def valid_actions(grid, current_node):
     """
     Returns a list of valid actions given a grid and current node.
     """
-    valid_actions = []
+    actions = []  # type: List[Action]
     n, m = grid.shape[0] - 1, grid.shape[1] - 1
     x, y = current_node
 
@@ -91,41 +95,42 @@ def valid_actions(grid, current_node):
     east_clear = y + 1 < m and grid[x, y + 1] == 0
 
     if north_clear:
-        valid_actions.append(Action.NORTH)
+        actions.append(Action.NORTH)
         if east_clear:
-            valid_actions.append(Action.NORTH_EAST)
+            actions.append(Action.NORTH_EAST)
         if west_clear:
-            valid_actions.append(Action.NORTH_WEST)
+            actions.append(Action.NORTH_WEST)
 
     if south_clear:
-        valid_actions.append(Action.SOUTH)
+        actions.append(Action.SOUTH)
         if east_clear:
-            valid_actions.append(Action.SOUTH_EAST)
+            actions.append(Action.SOUTH_EAST)
         if west_clear:
-            valid_actions.append(Action.SOUTH_WEST)
+            actions.append(Action.SOUTH_WEST)
 
     if west_clear:
-        valid_actions.append(Action.WEST)
+        actions.append(Action.WEST)
     if east_clear:
-        valid_actions.append(Action.EAST)
+        actions.append(Action.EAST)
 
-    return valid_actions
+    return actions
 
 
-def a_star(grid: np.ndarray, h, start, goal):
+def a_star(grid: np.ndarray, h: HeuristicFunction, start: Position, goal: Position)\
+        -> Tuple[List[Position], float]:
     assert 0 <= goal[0] < grid.shape[0]
     assert 0 <= goal[1] < grid.shape[1]
 
     assert grid[start[0], start[1]] == 0, "Start is in invalid position."
     assert grid[goal[0], goal[1]] == 0, "Goal is in invalid position."
 
-    path = []
+    path = []  # type: List[Position]
     path_cost = 0
     queue = PriorityQueue()
     queue.put((0, start))
     visited = set(start)
 
-    branch = {}
+    branch = {}  # type: Dict[Position, Tuple[float, Position, Action]]
     found = False
 
     while not queue.empty():
@@ -169,5 +174,5 @@ def a_star(grid: np.ndarray, h, start, goal):
     return path[::-1], path_cost
 
 
-def heuristic(position, goal_position):
+def heuristic(position: Position, goal_position: Position) -> float:
     return np.linalg.norm(np.array(position) - np.array(goal_position))
