@@ -220,6 +220,11 @@ be built into a path planner:
   the drone loses control, it might plummet to the ground,
   possibly killing people. As such, staying at low altitudes
   should always be cheaper than going (too) high.
+  This requires the planner not only to know the map, but also the
+  remaining resources such as battery power (since
+  every positive rotor acceleration causes current to spike, going up
+  and changing directions is naturally more expensive than going down
+  or in a straight line).
 - On the contrary, flying over buildings with a flat roof
   might be wished for if the drone is already at a higher
   altitude, as the probability of hurting someone in case
