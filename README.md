@@ -7,6 +7,19 @@ It integrates techniques to plan a path through an urban environment. Check out 
 ([original link](https://review.udacity.com/#!/rubrics/1534/view)) for more detail on how this implementation
 is differing from the starter code forked off the [original repo](https://github.com/udacity/FCND-Backyard-Flyer).
 
+## Before we start: A word of caution
+
+As of version 0.1.0 and 0.1.1, the Udacity-provided simulator is broken on Linux (at least on 
+Ubuntu 18.04, 20.04, but reportedly on some Windowses as well). Once you load the scene,
+a building is spawned right on top of your drone. Every move immediately results in a crash,
+which throws off the physics. There's a multitude of reports, some of them you can find here:
+
+- [udacity/fcnd-issue-reports#392](https://github.com/udacity/fcnd-issue-reports/issues/392)
+- [Udacity Knowledge: Is the drone supposed to spawn inside a building?](https://knowledge.udacity.com/questions/87322) 
+  (Spoiler alert: no.)
+- [Udacity Knowledge: How to change the spawn location of the drone in Simulator?](https://knowledge.udacity.com/questions/91857)
+  (Spoiler alert: you can't.)
+
 ## Python environment
 
 This project is running in a simulated environment. You can download the Linux version of the simulator from from the
@@ -16,7 +29,7 @@ The code was implemented against the Conda environment described in `environment
 run
 
 ```bash
-conda env create -f environment. yml
+conda env create -f environment.yml
 ```
 
 After that, activate it using
