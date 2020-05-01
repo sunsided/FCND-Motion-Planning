@@ -43,6 +43,10 @@ plan a path to.
 This spot is in a backyard fully enclosed by a building. In order
 to get here, the drone needs to fly at an altitude of about 70 meters.
 
+⚠️ We will not be able to fly to this location because the `colliders.txt`
+is incorrectly showing the backyard to be openly accessible. If we try,
+the drone crashes into the southern one of the thin walls (the upper one in the image).
+
 Note that this position is just next to the starting location
 and shows the [simulator bug](https://github.com/udacity/fcnd-issue-reports/issues/392)
 mentioned in [README.md](README.md) (the long, flat building in 
