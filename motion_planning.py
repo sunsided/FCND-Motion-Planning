@@ -286,6 +286,8 @@ class MotionPlanning(Drone):
         # TODO: When 2.5D/3D motion planning is allowed, re-enable these waypoints
         # self.add_mission_waypoint(self.create_waypoint_from_global(latitude=37.787681, longitude=-122.399856, altitude=1.0))
         # self.add_mission_waypoint(self.create_waypoint_from_global(latitude=37.796141, longitude=-122.394831, altitude=2.5))
+
+        # This one is inacessible due to a simulator / colliders mismatch
         # self.add_mission_waypoint(self.create_waypoint_from_global(latitude=37.793106, longitude=-122.394933, altitude=1.0))
 
         self.add_mission_waypoint(self.create_waypoint_from_global(latitude=37.790642, longitude=-122.397818, altitude=1.0))
@@ -325,9 +327,6 @@ class MotionPlanning(Drone):
         path, _ = a_star(self.grid, heuristic, grid_start, grid_goal)
         print(f'Path planning to goal completed in {timer() - start:.3} s.')
 
-        # TODO: prune path to minimize number of waypoints
-        # TODO (if you're feeling ambitious): Try a different approach altogether!
-
         # Convert path to waypoints
         waypoints = [self.to_waypoint(p, north_offset, east_offset, self.target_altitude) for p in path]
 
@@ -345,7 +344,6 @@ class MotionPlanning(Drone):
 
         # Set self.waypoints
         self.waypoints = waypoints
-        # TODO: send waypoints to sim (this is just for visualization of waypoints)
         self.send_waypoints()
 
     def read_lat0lon0(self, colliders_file: str) -> LatLon:
