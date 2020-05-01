@@ -19,13 +19,13 @@ def test_opposite_waypoints_have_zero_heading():
     p1 = [0, 0, 42, 0]   # goes left
     p2 = [0, 10, 42, 0]  # goes right again
     wps = [p0, p1, p2]
-    MotionPlanning.interpolate_headings(wps, fix_first=True, fix_last=True)
+    MotionPlanning.interpolate_headings(wps, fix_first=True, copy_last=True)
     assert(p0[3] == 0 and p1[3] == 0 and p2[3] == 0)
 
 
 def test_sequential_waypoints_have_identical_heading():
     wps = [[0, east, 42, 0] for east in range(100)]
-    MotionPlanning.interpolate_headings(wps, fix_first=True, fix_last=True)
+    MotionPlanning.interpolate_headings(wps, fix_first=True, copy_last=True)
     assert(np.all([np.isclose(wp[3], wps[0][3]) for wp in wps]))
 
 

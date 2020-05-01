@@ -317,12 +317,12 @@ class MotionPlanning(Drone):
 
     @staticmethod
     def interpolate_headings(waypoints: Waypoint,
-                             fix_first: bool = False, fix_last: bool = True) -> None:
+                             fix_first: bool = False, copy_last: bool = False) -> None:
         """
         Interpolates headings between two adjacent waypoints.
         :param waypoints: The waypoint list to update in place.
         :param fix_first: Whether to correct the first waypoint in the list.
-        :param fix_last: Whether to correct the last waypoint in the list.
+        :param copy_last: Whether to correct the last waypoint in the list.
         """
         # This uses a naive scheme to interpolate headings between two adjacent
         # waypoints. We could trivially set each waypoint's heading to be
@@ -344,6 +344,10 @@ class MotionPlanning(Drone):
             theta = MotionPlanning.wrap_angle((theta_0_1 + theta_1_0) * 0.5)
             p1[3] = theta
 
+            # Unless it will be overwritten, the next waypoint is going to
+            # be determined by the transition from its former point.
+            p2[3] = theta_1_0
+
         # Set very last waypoint to the previous waypoint's heading. If no new waypoints
         # are coming, this will smoothen the movement. If new waypoints are added, it will
         # eventually be updated with an interpolated value.
@@ -351,7 +355,7 @@ class MotionPlanning(Drone):
         # waypoint untouched.
         if len(waypoints) > 1:
             waypoints[0][3] = waypoints[1][3] if fix_first else waypoints[0][3]
-            waypoints[-1][3] = waypoints[-2][3] if fix_last else waypoints[-1][3]
+            waypoints[-1][3] = waypoints[-2][3] if copy_last else waypoints[-1][3]
 
     def start(self):
         self.start_log("Logs", "NavLog.txt")
