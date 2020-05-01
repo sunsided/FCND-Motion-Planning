@@ -257,6 +257,17 @@ The `heuristic` itself only called out to `np.linalg.norm` for the Euclidean dis
 
 ![](misc/astar-performance.jpg)
 
+Replacing `PriorityQueue` with the `heapq` module (a min heap implementation),
+the time spent on putting an item into the queue now diminished.
+
+Most of the time - of course - is still spent in the `heuristic` method.
+What's peculiar is that running the A\* algorithm in an isolated environment
+(`astar_performance.py`) with identical inputs proved that it is, as would be
+expected, extremely fast; in there, only about 140 ms are spent on planning
+the path to the first goal (as opposed to 5+ seconds when using the simulator).
+
+![](misc/astar-performance-heapq.jpg) 
+
 ## Mission complete
 
 At the end of the day, always park your drone in a safe spot

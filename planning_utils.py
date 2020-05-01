@@ -1,7 +1,7 @@
 from enum import Enum
-from queue import PriorityQueue
 from typing import Tuple, Callable, Dict, List
 import numpy as np
+import heapq
 
 
 Position = Tuple[int, int]
@@ -103,8 +103,8 @@ def a_star(grid: np.ndarray, h: HeuristicFunction, start: Position, goal: Positi
 
     path = []  # type: List[Position]
     path_cost = 0
-    queue = PriorityQueue()
-    queue.put((0, start))
+    heap = []  # type: List[Tuple[float, Position]] # Priority queue implemented as a heap
+    heapq.heappush(heap, (0., start))
     visited = set(start)
 
     # noinspection PyTypeChecker
@@ -113,8 +113,8 @@ def a_star(grid: np.ndarray, h: HeuristicFunction, start: Position, goal: Positi
     branch = {}  # type: Dict[Position, Tuple[float, Position, Action]]
     found = False
 
-    while not queue.empty():
-        item = queue.get()
+    while len(heap) > 0:
+        item = heapq.heappop(heap)
         current_node = item[1]
 
         if current_node == goal:
@@ -138,7 +138,7 @@ def a_star(grid: np.ndarray, h: HeuristicFunction, start: Position, goal: Positi
                 if next_node not in visited:
                     visited.add(next_node)
                     branch[next_node] = (branch_cost, current_node, action)
-                    queue.put((queue_cost, next_node))
+                    heapq.heappush(heap, (queue_cost, next_node))
 
     if found:
         # retrace steps

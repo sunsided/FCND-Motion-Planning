@@ -402,8 +402,8 @@ class MotionPlanning(Drone):
         self.connection.start()
 
         # Only required if they do threaded
-        # while self.in_mission:
-        #    pass
+        while self.in_mission:
+            pass
 
         self.stop_log()
 
@@ -430,11 +430,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--port', type=int, default=5760, help='Port number')
     parser.add_argument('--host', type=str, default='127.0.0.1', help="host address, i.e. '127.0.0.1'")
-    parser.add_argument('-v', '--verbose', dest='verbose', default=False, action='store_true',
-                        help='Enables verbose logging')
     args = parser.parse_args()
 
-    conn = MavlinkConnection('tcp:{0}:{1}'.format(args.host, args.port), timeout=60)
+    conn = MavlinkConnection('tcp:{0}:{1}'.format(args.host, args.port), timeout=300, threaded=False)
     drone = MotionPlanning(conn)
 
     time.sleep(1)
