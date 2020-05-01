@@ -96,11 +96,11 @@ For this, an extra state `PLANNING` was introduced in the `States` enum, to be e
 
 Specifically, the `backyard_flyer.py` solution code has these state transitions:
 
-![States of the Backyard Flyer solution](misc/backyard-flyer-states.png)
+![States of the Backyard Flyer solution](misc/state_machines/backyard-flyer-states.png)
 
 For comparison, state transitions of the `motion_planning.py` starter code look like this:
 
-![States of the Motion Planning starter code](misc/motion-planner-states.png)
+![States of the Motion Planning starter code](misc/state_machines/motion-planner-starter-states.png)
 
 In `plan_path()`, first a target altitude and safety margin from obstacles is defined.
 We then load the environment from `colliders.csv` and discretize it using `create_grid()`.
@@ -155,6 +155,13 @@ manual transition
 Closing connection ...
 ```
 
+### State machine
+
+Some changes were made to the state machine of the starter code in order to
+separate the different concerns a bit better.
+
+**TODO: Add state machine**
+
 ### Implementing Path Planning
 
 #### Setting the home position
@@ -162,8 +169,8 @@ Closing connection ...
 As far as the starter code is concerned, the Drone starts its life in the center
 of the loaded map and then navigates from there. This holds true for the
 simulator, but doesn't in reality. To emulate the behavior of being localized in
-the real world, initial geodesic coordinates are loaded from the first
-line of `colliders.csv`:
+the real world, initial coordinates are loaded in `receive_and_set_home_position()`
+from the first line of `colliders.csv`:
 
 ```
 lat0 37.792480, lon0 -122.397450
@@ -186,6 +193,10 @@ The coordinates obtained this way are then set as the drone's home position
 via a call to `set_home_position()`. We can use this information later on
 in combination with the grid boundaries of the map to accurately position
 us in any grid cell.
+
+Local coordinates are then calculated from the current geodetic coordinates (latitude,
+longitude, altitude; this was a required point according to the project's [rubric](RUBRIC.md))
+and compared to the values provided by the `Drone` class in `determine_local_position()`.
 
 #### Setting the goal position(s)
 

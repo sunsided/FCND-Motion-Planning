@@ -20,18 +20,20 @@ from udacidrone.frame_utils import global_to_local
 
 
 LatLon = NamedTuple('LatLon', [('latitude', float), ('longitude', float)])
-Waypoint = List[Union[List[float], Tuple[float, float, float, float], np.ndarray]]
+Waypoint = Union[List[Union[float, int]], Tuple[float, float, float, float], np.ndarray]
+Waypoints = List[Waypoint]
 
 
 class States(Enum):
     MANUAL = auto()
-    DOWNLOAD_MAP = auto()
+    DOWNLOAD_MAP_DATA = auto()
+    BUILD_MAP = auto()
     ARMING = auto()
+    PLAN_MISSION = auto()
     TAKEOFF = auto()
     WAYPOINT = auto()
     LANDING = auto()
     DISARMING = auto()
-    PLANNING = auto()
 
 
 class MotionPlanning(Drone):
@@ -42,8 +44,8 @@ class MotionPlanning(Drone):
         self.colliders_file = 'colliders.csv'
         self.target_position = np.array([0.0, 0.0, 0.0])
         self.in_mission = True
-        self.mission_waypoints = []  # Set of waypoints to reach for achieving the mission
-        self.waypoints = []            # Set of waypoints to reach the mission coordinates
+        self.mission_waypoints = []  # type: Waypoints # Set of waypoints to reach for achieving the mission
+        self.waypoints = []          # type: Waypoints # Set of waypoints to reach the mission coordinates
         self.check_state = {}
         self.flight_state = None  # type: Optional[States]
         self.verbose = False
@@ -55,7 +57,7 @@ class MotionPlanning(Drone):
         self.map_data = None  # type: Optional[np.ndarray]
         self.grid = None  # type: Optional[np.ndarray]
         self.height_map = None  # type: Optional[np.ndarray]
-        self.grid_offsets = (0., 0.)
+        self.grid_offsets = (0., 0.)  # type: Tuple[float, float]
         self.target_altitude = 5  # type: int
         self.safety_distance = 5  # type: int
 
@@ -72,12 +74,15 @@ class MotionPlanning(Drone):
             return
         if self.in_state(States.MANUAL):
             self.download_map_transition()
-        elif self.in_state(States.DOWNLOAD_MAP):
+        elif self.in_state(States.DOWNLOAD_MAP_DATA):
+            self.build_map_transition()
+        elif self.in_state(States.BUILD_MAP):
             self.arming_transition()
         elif self.in_state(States.ARMING):
             if self.armed:
                 self.plan_path()
-        elif self.in_state(States.PLANNING):
+        elif self.in_state(States.PLAN_MISSION):
+            # TODO: Only take off when the first partial mission is planned
             self.takeoff_transition()
         elif self.in_state(States.DISARMING):
             if ~self.armed & ~self.guided:
@@ -163,7 +168,8 @@ class MotionPlanning(Drone):
         if self.has_waypoints:
             self.target_position = self.waypoints.pop(0)
             print('target position', self.target_position)
-            self.cmd_position(self.target_position[0], self.target_position[1], self.target_position[2], self.target_position[3])
+            self.cmd_position(self.target_position[0], self.target_position[1],
+                              self.target_position[2], self.target_position[3])
         elif self.has_mission_waypoints:
             self.plan_next_mission_step()
 
@@ -196,45 +202,64 @@ class MotionPlanning(Drone):
 
     def download_map_transition(self):
         print('Downloading map ...')
-        self.set_state(States.DOWNLOAD_MAP)
+        self.set_state(States.DOWNLOAD_MAP_DATA)
 
         # Read in obstacle map
         self.map_data = np.loadtxt(self.colliders_file, delimiter=',', dtype='Float64', skiprows=2)
 
-    def plan_path(self):
-        self.set_state(States.PLANNING)
-        self.target_position[2] = self.target_altitude
+    def build_map_transition(self):
+        print('Building map ...')
+        self.set_state(States.BUILD_MAP)
 
+        # Define a grid for a particular altitude and safety margin around obstacles
+        assert self.map_data is not None
+        grid, heightmap, north_offset, east_offset = create_grid(self.map_data,
+                                                                 self.target_altitude, self.safety_distance)
+        self.set_map(grid, heightmap, north_offset, east_offset)
+
+    def receive_and_set_home_position(self) -> LatLon:
+        """
+        Receives the home position from our virtual GPS (the CSV file).
+        """
         # Rubric points:
         # - Read lat0, lon0 from colliders into floating point values
         # - Set home position to (lon0, lat0, 0)
         home_latlon = self.read_lat0lon0(self.colliders_file)
         self.set_home_position(home_latlon.longitude, home_latlon.latitude, 0)
+        return home_latlon
 
+    def determine_local_position(self) -> None:
+        """
+        Determines the local position relative to the drone's home position.
+        :return: A tuple consisting of the local position and its difference to the Drone.local_position value.
+        """
         # Rubric points:
         # - Retrieve current global position
         # - Convert to current local position using global_to_local()
         geodetic_coords = [self._longitude, self._latitude, self._altitude]
         local_position = global_to_local(global_position=geodetic_coords, global_home=self.global_home)
-        local_position_difference = np.linalg.norm(np.subtract(self.local_position, local_position))
+        local_position_error = np.linalg.norm(np.subtract(self.local_position, local_position))
 
         # The values do differ; let's just make sure here that nothing too weird is going on.
-        assert (np.isclose(local_position_difference, 0, rtol=1, atol=1)), \
+        assert (np.isclose(local_position_error, 0, rtol=1, atol=1)), \
             f"Calculated local position {local_position} differs " \
-            f"from provided one {self.local_position} by {local_position_difference} m."
+            f"from provided one {self.local_position} by {local_position_error} m."
 
         print('global home {0}, position {1}, local position {2} (differs by {3:.4} m)'.format(
-            self.global_home, self.global_position, self.local_position, local_position_difference))
+            self.global_home, self.global_position, self.local_position, local_position_error))
 
-        # Define a grid for a particular altitude and safety margin around obstacles
-        assert self.map_data is not None
-        grid, heightmap, north_offset, east_offset = create_grid(self.map_data, self.target_altitude, self.safety_distance)
-        self.set_map(grid, heightmap, north_offset, east_offset)
+    def plan_path(self):
+        self.set_state(States.PLAN_MISSION)
+        self.target_position[2] = self.target_altitude
+
+        self.receive_and_set_home_position()
+        self.determine_local_position()
 
         print("Generating mission ...")
 
         # Set goal as some arbitrary position on the grid
         # TODO: adapt to set goal as latitude / longitude position and convert
+        (north_offset, east_offset) = self.grid_offsets
         self.add_mission_waypoint([-north_offset + 10, -east_offset, self.target_altitude, 0])
         self.add_mission_waypoint([-north_offset + 10, -east_offset + 10, self.target_altitude, 0])
 
@@ -316,7 +341,7 @@ class MotionPlanning(Drone):
         return (theta + np.pi) % (2*np.pi) - np.pi
 
     @staticmethod
-    def interpolate_headings(waypoints: Waypoint,
+    def interpolate_headings(waypoints: Waypoints,
                              fix_first: bool = False, copy_last: bool = False) -> None:
         """
         Interpolates headings between two adjacent waypoints.
