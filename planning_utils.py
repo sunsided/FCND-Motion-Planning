@@ -92,7 +92,12 @@ def valid_actions(grid, current_node):
     return valid_actions
 
 
-def a_star(grid, h, start, goal):
+def a_star(grid: np.ndarray, h, start, goal):
+    assert 0 <= goal[0] < grid.shape[0]
+    assert 0 <= goal[1] < grid.shape[1]
+
+    assert grid[start[0], start[1]] == 0, "Start is in invalid position."
+    assert grid[goal[0], goal[1]] == 0, "Goal is in invalid position."
 
     path = []
     path_cost = 0

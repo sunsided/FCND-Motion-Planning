@@ -96,11 +96,11 @@ For this, an extra state `PLANNING` was introduced in the `States` enum, to be e
 
 Specifically, the `backyard_flyer.py` solution code has these state transitions:
 
-![States of the Backyard Flyer solution](misc/backyard-flyer-states.png)
+![States of the Backyard Flyer solution](misc/state_machines/backyard-flyer-states.png)
 
 For comparison, state transitions of the `motion_planning.py` starter code look like this:
 
-![States of the Motion Planning starter code](misc/motion-planner-states.png)
+![States of the Motion Planning starter code](misc/state_machines/motion-planner-starter-states.png)
 
 In `plan_path()`, first a target altitude and safety margin from obstacles is defined.
 We then load the environment from `colliders.csv` and discretize it using `create_grid()`.
@@ -155,6 +155,33 @@ manual transition
 Closing connection ...
 ```
 
+### Extending the state machine
+
+Some changes were made to the state machine of the starter code in order to
+separate the different concerns a bit better:
+
+- Instead of directly going from `MANUAL` to `ARMING` state,
+  we're "downloading" (from CSV) and preparing the map first in `DOWNLOAD_MAP_DATA` and `BUILD_MAP`.
+  This is to resemble the fact that obtaining and pre-processing the map is, or can be, an offline process.
+- The former `PLANNING` step has been broken into two parts, `INIT_MISSION` and `PLAN_MISSION_GOAL`.
+  This is needed because our entire mission may consist of many sub-goals, such as
+  picking something up in some location and dropping it off somewhere else. The planner
+  only every generates plans up to the next mission goal.
+- In the starter code, the `WAYPOINT` state would transition into `LANDING` if no more waypoints were
+  available. Now, the planner is instead asked to provide new waypoints if more mission goals
+  remain.
+
+![](misc/state_machines/motion-planner-states.png)
+
+Note that parts of the planning process are executed on the ground as well as in air. In any case, the
+drone is armed. While it does not make much of a difference in the simulator, arming the drone _after_ planning
+(and potentially de-arming it before entering the re-planning phase) may give a human operator or bystander the
+false impression that the device is safe to approach while it is still in planning state. Since the drone is taking
+off immediately after generating a plan, such a behavior might very well lead to injuries.
+
+Because of that, the drone is armed first (add some warning lights for good measure), even though planning for
+the next goal might take a while.
+
 ### Implementing Path Planning
 
 #### Setting the home position
@@ -162,8 +189,8 @@ Closing connection ...
 As far as the starter code is concerned, the Drone starts its life in the center
 of the loaded map and then navigates from there. This holds true for the
 simulator, but doesn't in reality. To emulate the behavior of being localized in
-the real world, initial geodesic coordinates are loaded from the first
-line of `colliders.csv`:
+the real world, initial coordinates are loaded in `receive_and_set_home_position()`
+from the first line of `colliders.csv`:
 
 ```
 lat0 37.792480, lon0 -122.397450
@@ -186,3 +213,40 @@ The coordinates obtained this way are then set as the drone's home position
 via a call to `set_home_position()`. We can use this information later on
 in combination with the grid boundaries of the map to accurately position
 us in any grid cell.
+
+Local coordinates are then calculated from the current geodetic coordinates (latitude,
+longitude, altitude; this was a required point according to the project's [rubric](RUBRIC.md))
+and compared to the values provided by the `Drone` class in `determine_local_position()`.
+
+#### Setting the goal position(s)
+
+A couple of interesting goal positions were selected by flying around
+the map in the simulator; you can find a description and visualization 
+in [LOCATIONS.md](LOCATIONS.md).
+
+Thinking of these positions, there are some ideas that might
+be built into a path planner:
+
+- Flying in high altitudes might be dangerous within cities: 
+  If for some reason the drone loses control, it might plummet
+  to the ground, possibly injuring someone. As such, staying at low
+  altitudes should always be cheaper than going (too) high.
+  This requires the planner not only to know the map, but also the
+  remaining resources such as battery power (since
+  every positive rotor acceleration causes current to spike, going up
+  and changing directions is naturally more expensive than going down
+  or in a straight line).
+- Flying too close to the ground is dangerous as well; because of that,
+  the planner should use a higher cost for all paths outside an altitude 
+  "sweet spot" (or range).
+- A bit esoteric, but flying over buildings with a flat roof
+  might be wished for if the drone is already at a higher
+  altitude, as the probability of hurting someone in case
+  of an accident may be reduced.
+
+## Mission complete
+
+At the end of the day, always park your drone in a safe spot
+(and don't forget to disarm it).
+
+![Package delivered!](misc/how-not-to-park-your-drone.jpg)
