@@ -4,11 +4,11 @@
 
 - [x] Load the 2.5D map in the colliders.csv file describing the environment.
 - [x] Discretize the environment into a grid or graph representation.
-- [ ] Define the start and goal locations.
-- [ ] Perform a search using A* or other search algorithm.
-- [ ] Use a collinearity test or ray tracing method (like Bresenham) to remove unnecessary waypoints.
-- [ ] Return waypoints in local ECEF coordinates (format for `self.all_waypoints` is `[N, E, altitude, heading]`, where the drone’s start location corresponds to [0, 0, 0, 0].
-- [ ] Write it up.
+- [x] Define the start and goal locations.
+- [x] Perform a search using A* or other search algorithm.
+- [x] Use a collinearity test or ray tracing method (like Bresenham) to remove unnecessary waypoints.
+- [x] Return waypoints in local ECEF coordinates (format for `self.all_waypoints` is `[N, E, altitude, heading]`, where the drone’s start location corresponds to [0, 0, 0, 0].
+- [x] Write it up.
 
 ## Writeup ✔️
 
