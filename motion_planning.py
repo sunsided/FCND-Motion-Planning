@@ -340,8 +340,8 @@ class MotionPlanning(Drone):
         return LatLon(latitude=lat, longitude=lon)
 
     @staticmethod
-    def to_waypoint(point: Union[List[float], Tuple[float, float, float, float], np.ndarray],
-                    north_offset: float, east_offset: float, altitude: float) -> List[float]:
+    def to_waypoint(point: Union[Tuple[int, int]], north_offset: float, east_offset: float, altitude: float) \
+            -> List[float]:
         return [point[0] + north_offset, point[1] + east_offset, altitude, 0]
 
     @staticmethod

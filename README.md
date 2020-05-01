@@ -252,21 +252,32 @@ and vertical movement. Diagonal movement was added with a cost of `sqrt(2)`.
 What struck me as odd is how terribly bad the A\* implementation performed
 even with only four actions on a 2-dimensional grid. Running a performance
 analysis showed that most of the algorithm's time is spent in calls to
-the `heuristic()` function and the `put` operation of the `PriorityQueue` class.
-The `heuristic` itself only called out to `np.linalg.norm` for the Euclidean distance.
+the `heuristic()` function and the `put()` operation of the `PriorityQueue` class.
+The `heuristic()` itself only called out to `np.linalg.norm()` for the Euclidean distance.
 
 ![](misc/astar-performance.jpg)
 
-Replacing `PriorityQueue` with the `heapq` module (a min heap implementation),
-the time spent on putting an item into the queue now diminished.
-
-Most of the time - of course - is still spent in the `heuristic` method.
 What's peculiar is that running the A\* algorithm in an isolated environment
 (`astar_performance.py`) with identical inputs proved that it is, as would be
 expected, extremely fast; in there, only about 140 ms are spent on planning
 the path to the first goal (as opposed to 5+ seconds when using the simulator).
 
-![](misc/astar-performance-heapq.jpg) 
+Replacing `PriorityQueue` with the `heapq` module (a min heap implementation),
+the time spent on putting an item into the queue now diminished. Similarly,
+replacing the call to `np.linalg.norm()` with the hand-crafted version shown here
+
+```python
+def heuristic(position: GridPosition, goal_position: GridPosition) -> float:
+    dx = position[0] - goal_position[0]
+    dy = position[1] - goal_position[1]
+    return np.sqrt(dx*dx + dy*dy)
+```
+
+dropped the execution time by an entire order of magnitude. In the stand-alone
+application, the algorithm now executes in ~0.06 seconds, whereas in the simulator,
+planning now finishes after about 0.6 seconds.
+
+![](misc/astar-performance-fixed.jpg) 
 
 ## Mission complete
 

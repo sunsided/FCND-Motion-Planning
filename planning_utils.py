@@ -4,8 +4,8 @@ import numpy as np
 import heapq
 
 
-Position = Tuple[int, int]
-HeuristicFunction = Callable[[Position, Position], float]
+GridPosition = Tuple[int, int]
+HeuristicFunction = Callable[[GridPosition, GridPosition], float]
 
 SQRT2 = np.sqrt(2)
 
@@ -80,7 +80,7 @@ class Action(Enum):
     def delta(self) -> Tuple[int, int]:
         return self.value[0], self.value[1]
 
-    def is_valid(self, grid: np.ndarray, current_node: Position) -> bool:
+    def is_valid(self, grid: np.ndarray, current_node: GridPosition) -> bool:
         """
         Determines whether the specified action is valid, given the the current node and the grid.
         :param grid: The grid to verify the action for.
@@ -93,36 +93,40 @@ class Action(Enum):
         return (0 <= x < n) and (0 <= y < m) and (grid[x, y] == 0)
 
 
-def a_star(grid: np.ndarray, h: HeuristicFunction, start: Position, goal: Position)\
-        -> Tuple[List[Position], float]:
+def same_node(a: GridPosition, b: GridPosition) -> bool:
+    return a == b
+
+
+def a_star(grid: np.ndarray, h: HeuristicFunction, start: GridPosition, goal: GridPosition)\
+        -> Tuple[List[GridPosition], float]:
     assert 0 <= goal[0] < grid.shape[0]
     assert 0 <= goal[1] < grid.shape[1]
 
     assert grid[start[0], start[1]] == 0, "Start is in invalid position."
     assert grid[goal[0], goal[1]] == 0, "Goal is in invalid position."
 
-    path = []  # type: List[Position]
+    path = []  # type: List[GridPosition]
     path_cost = 0
-    heap = []  # type: List[Tuple[float, Position]] # Priority queue implemented as a heap
+    heap = []  # type: List[Tuple[float, GridPosition]] # Priority queue implemented as a heap
     heapq.heappush(heap, (0., start))
     visited = set(start)
 
     # noinspection PyTypeChecker
     possible_actions = list(Action)  # type: List[Action]
 
-    branch = {}  # type: Dict[Position, Tuple[float, Position, Action]]
+    branch = {}  # type: Dict[GridPosition, Tuple[float, GridPosition, Action]]
     found = False
 
     while len(heap) > 0:
         item = heapq.heappop(heap)
         current_node = item[1]
 
-        if current_node == goal:
+        if same_node(current_node, goal):
             print('Found a path.')
             found = True
             break
 
-        if current_node != start:
+        if not same_node(current_node, start):
             current_cost = branch[current_node][0]
         else:
             current_cost = 0.0
@@ -130,8 +134,9 @@ def a_star(grid: np.ndarray, h: HeuristicFunction, start: Position, goal: Positi
         for action in possible_actions:
             if action.is_valid(grid, current_node):
                 # get the tuple representation
-                da = action.delta
-                next_node = (current_node[0] + da[0], current_node[1] + da[1])
+                dx, dy = action.delta
+                nx, ny = current_node[0] + dx, current_node[1] + dy
+                next_node = (nx, ny)
                 branch_cost = current_cost + action.cost
                 queue_cost = branch_cost + h(next_node, goal)
 
@@ -156,5 +161,8 @@ def a_star(grid: np.ndarray, h: HeuristicFunction, start: Position, goal: Positi
     return path[::-1], path_cost
 
 
-def heuristic(position: Position, goal_position: Position) -> float:
-    return np.linalg.norm(np.array(position) - np.array(goal_position))
+def heuristic(position: GridPosition, goal_position: GridPosition) -> float:
+    dx = position[0] - goal_position[0]
+    dy = position[1] - goal_position[1]
+    delta_sq = dx*dx + dy*dy
+    return np.sqrt(delta_sq)
