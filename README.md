@@ -280,9 +280,11 @@ planning now finishes after about 0.12 seconds.
 ![](misc/astar-performance-fixed.jpg) 
 
 Adding some extra actions to the planner, such as 10 meter increments,
-far diagonal steps (NNE, ESE, etc.) led to quicker exploration of the map.
+far diagonal steps (NNE, ESE, etc.) lead to quicker exploration of the map,
+however, this comes at a price, since now not only the goal positions, but
+also the connection between them would need to be checked.
 
-However, the provided CSV file seems to conflict with the scenery. Here's
+For add some additional fun, the provided CSV file conflicts with the scenery. Here's
 a path that leads straight through a house because that spot is indeed
 labeled as free according to the map, at a 10 meter altitude.
 
@@ -293,6 +295,12 @@ we find that this building, indeed, is announced to be way smaller than it
 is in the simulation:
 
 ![](misc/heightmap_25_marked.jpg)
+
+When generating a new `colliders.csv` straight from the Simulator, the situation has become
+noticeably better for the buildings (but **note that the buggy building on 
+the starting position is now registered, too**), however details such as trees are missing.
+
+![](misc/heightmap_25_generated.jpg)
 
 ## Mission complete
 
