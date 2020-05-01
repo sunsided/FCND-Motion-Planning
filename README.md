@@ -160,7 +160,7 @@ Closing connection ...
 Some changes were made to the state machine of the starter code in order to
 separate the different concerns a bit better.
 
-**TODO: Add state machine**
+![](misc/state_machines/motion-planner-states.png)
 
 ### Implementing Path Planning
 
