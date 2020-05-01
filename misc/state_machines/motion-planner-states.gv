@@ -1,52 +1,51 @@
 digraph finite_state_machine {
     rankdir=LR;
-    size="8,8"
+    size="8,10"
     label = "Motion Planner"
 
-    subgraph cluster_top {
+    subgraph cluster_solution {
+        label = "Ground";
+
+        init [shape = point ];
+        in_mission [shape = diamond, label = "in mission" ];
+
+        MANUAL [shape = doublecircle];
+        ARMING [shape = circle];
+        DISARMING [shape = circle];
+
+        subgraph cluster_mapping {
+            label = "Map Generation";
+            DOWNLOAD_MAP_DATA [shape = circle, label = "DOWNLOAD\n_MAP_DATA"];
+            BUILD_MAP [shape = circle];
+        }
+    }
+
+    subgraph cluster_planning {
         label = "";
+        INIT_MISSION [shape = circle];
+        PLAN_MISSION_GOAL [shape = circle, label = "PLAN_MISSION\n_GOAL"];
+    }
 
-        subgraph cluster_solution {
-            label = "Ground";
+    subgraph cluster_flight {
+        label = "Flight"
 
-            init [shape = point ];
-            in_mission [shape = diamond, label = "in mission" ];
+        TAKEOFF [shape = circle];
+        WAYPOINT [shape = circle];
+        LANDING [shape = circle];
 
-            MANUAL [shape = doublecircle];
-            ARMING [shape = circle];
-            DISARMING [shape = circle];
+        in_air [shape = diamond, label = "in air" ];
 
-            subgraph cluster_mapping {
-                label = "Map";
-                DOWNLOAD_MAP_DATA [shape = circle, label = "DOWNLOAD\n_MAP_DATA"];
-                BUILD_MAP [shape = circle];
-            }
+        more_waypoints [shape = diamond, label = "more waypoints" ];
+        more_goals [shape = diamond, label = "more goals" ];
 
-            {rank=same; ARMING; DISARMING}
-        }
-
-        subgraph cluster_planning {
-            label = "Planning";
-            PLAN_MISSION [shape = circle];
-        }
-
-        subgraph cluster_flight {
-            label = "Flight"
-
-            TAKEOFF [shape = circle];
-            WAYPOINT [shape = circle];
-            LANDING [shape = circle];
-
-            {rank=same; TAKEOFF, LANDING}
-        }
-
+        {rank=same; rankdir=LR; TAKEOFF; WAYPOINT; LANDING}
+        {rank=same; rankdir=LR; more_goals; more_waypoints; in_air}
     }
 
     // force ordering
     MANUAL -> ARMING [style=invis];
     MANUAL -> DISARMING [style=invis];
     BUILD_MAP -> WAYPOINT [style=invis];
-    //PLAN_MISSION -> WAYPOINT [style=invis];
 
     init -> MANUAL;
     MANUAL -> in_mission;
@@ -55,11 +54,22 @@ digraph finite_state_machine {
     DOWNLOAD_MAP_DATA -> BUILD_MAP [ label = "" ];
     BUILD_MAP -> ARMING [ label = "" ];
 
-    ARMING -> PLAN_MISSION [ label = "" ];
-    PLAN_MISSION -> TAKEOFF [ label = "" ];
+    ARMING -> INIT_MISSION [ label = "" ];
+    INIT_MISSION -> PLAN_MISSION_GOAL [ label = "" ];
+    PLAN_MISSION_GOAL -> in_air [ label = "" ];
+
+    in_air -> TAKEOFF [ label = "no" ];
+    in_air -> WAYPOINT [ label = "yes" ];
+
     TAKEOFF -> WAYPOINT [ label = "" ];
-    WAYPOINT -> WAYPOINT [ label = "[more waypoints]" ];
-    WAYPOINT -> LANDING [ label = "[no more waypoints]" ];
+
+    WAYPOINT -> more_waypoints [ label = "" ];
+    more_waypoints -> WAYPOINT [ label = "yes" ];
+    more_waypoints -> more_goals [ label = "no" ];
+
+    more_goals -> PLAN_MISSION_GOAL [ label = "yes" ];
+    more_goals -> LANDING [ label = "no" ];
+
     LANDING -> DISARMING [ label = "" ];
     DISARMING -> MANUAL [ label = "" ];
 }

@@ -155,12 +155,32 @@ manual transition
 Closing connection ...
 ```
 
-### State machine
+### Extending the state machine
 
 Some changes were made to the state machine of the starter code in order to
-separate the different concerns a bit better.
+separate the different concerns a bit better:
+
+- Instead of directly going from `MANUAL` to `ARMING` state,
+  we're "downloading" (from CSV) and preparing the map first in `DOWNLOAD_MAP_DATA` and `BUILD_MAP`.
+  This is to resemble the fact that obtaining and pre-processing the map is, or can be, an offline process.
+- The former `PLANNING` step has been broken into two parts, `INIT_MISSION` and `PLAN_MISSION_GOAL`.
+  This is needed because our entire mission may consist of many sub-goals, such as
+  picking something up in some location and dropping it off somewhere else. The planner
+  only every generates plans up to the next mission goal.
+- In the starter code, the `WAYPOINT` state would transition into `LANDING` if no more waypoints were
+  available. Now, the planner is instead asked to provide new waypoints if more mission goals
+  remain.
 
 ![](misc/state_machines/motion-planner-states.png)
+
+Note that parts of the planning process are executed on the ground as well as in air. In any case, the
+drone is armed. While it does not make much of a difference in the simulator, arming the drone _after_ planning
+(and potentially de-arming it before entering the re-planning phase) may give a human operator or bystander the
+false impression that the device is safe to approach while it is still in planning state. Since the drone is taking
+off immediately after generating a plan, such a behavior might very well lead to injuries.
+
+Because of that, the drone is armed first (add some warning lights for good measure), even though planning for
+the next goal might take a while.
 
 ### Implementing Path Planning
 

@@ -29,7 +29,8 @@ class States(Enum):
     DOWNLOAD_MAP_DATA = auto()
     BUILD_MAP = auto()
     ARMING = auto()
-    PLAN_MISSION = auto()
+    INIT_MISSION = auto()
+    PLAN_MISSION_GOAL = auto()
     TAKEOFF = auto()
     WAYPOINT = auto()
     LANDING = auto()
@@ -44,11 +45,11 @@ class MotionPlanning(Drone):
         self.colliders_file = 'colliders.csv'
         self.target_position = np.array([0.0, 0.0, 0.0])
         self.in_mission = True
+        self.in_air = False
         self.mission_waypoints = []  # type: Waypoints # Set of waypoints to reach for achieving the mission
         self.waypoints = []          # type: Waypoints # Set of waypoints to reach the mission coordinates
         self.check_state = {}
         self.flight_state = None  # type: Optional[States]
-        self.verbose = False
 
         # convencience vector to flip up with down
         self.flip_ud = np.array([1, 1, -1], dtype=float)
@@ -80,10 +81,14 @@ class MotionPlanning(Drone):
             self.arming_transition()
         elif self.in_state(States.ARMING):
             if self.armed:
-                self.plan_path()
-        elif self.in_state(States.PLAN_MISSION):
-            # TODO: Only take off when the first partial mission is planned
-            self.takeoff_transition()
+                self.init_mission_transition()
+        elif self.in_state(States.INIT_MISSION):
+            self.plan_mission_goal_transition()
+        elif self.in_state(States.PLAN_MISSION_GOAL):
+            if not self.in_air:
+                self.takeoff_transition()
+            else:
+                self.waypoint_transition()
         elif self.in_state(States.DISARMING):
             if ~self.armed & ~self.guided:
                 self.manual_transition()
@@ -94,8 +99,10 @@ class MotionPlanning(Drone):
                 self.waypoint_transition()
         elif self.in_state(States.WAYPOINT):
             if self.close_to_target_ned(1.0):
-                if not self.mission_complete:
+                if self.has_waypoints:
                     self.waypoint_transition()
+                elif self.has_mission_goals:
+                    self.plan_mission_goal_transition()
                 else:
                     if np.linalg.norm(self.local_velocity[0:2]) < 1.0:
                         self.landing_transition()
@@ -109,6 +116,7 @@ class MotionPlanning(Drone):
             # TODO: Allow disarming when in rest.
             if self.global_position[2] - self.global_home[2] < 0.1:
                 if abs(self.local_position[2]) < 0.01:
+                    self.in_air = False
                     self.disarming_transition()
 
     @property
@@ -116,7 +124,7 @@ class MotionPlanning(Drone):
         return len(self.mission_waypoints)
 
     @property
-    def has_mission_waypoints(self) -> bool:
+    def has_mission_goals(self) -> bool:
         return self.mission_length > 0
 
     @property
@@ -125,17 +133,14 @@ class MotionPlanning(Drone):
 
     @property
     def mission_complete(self) -> bool:
-        return not (self.has_mission_waypoints or self.has_waypoints)
+        return not (self.has_mission_goals or self.has_waypoints)
 
     def add_mission_waypoint(self, waypoint: Waypoint) -> None:
         self.mission_waypoints.append(waypoint)
 
     def get_next_mission_waypoint(self) -> Waypoint:
-        assert self.has_mission_waypoints
+        assert self.has_mission_goals
         return self.mission_waypoints.pop(0)
-
-    def set_verbose(self, verbose: bool):
-        self.verbose = verbose
 
     def close_to_target_ne(self, deadband: float) -> bool:
         return np.linalg.norm(self.target_position[0:2] - self.local_position[0:2]) < deadband
@@ -147,49 +152,46 @@ class MotionPlanning(Drone):
         return state == self.flight_state
 
     def set_state(self, state: States):
-        if self.verbose:
-            print(f'Going from {self.flight_state} to {state}')
+        icon = '➡️' if self.flight_state != state else '↪️'
+        print(f'{icon} Transition from {self.flight_state} to {state}.')
         self.flight_state = state
 
     def arming_transition(self):
         self.set_state(States.ARMING)
-        print("arming transition")
         self.arm()
         self.take_control()
 
     def takeoff_transition(self):
         self.set_state(States.TAKEOFF)
-        print(f"takeoff transition to {self.target_altitude} m")
+        print(f"Target altitude {self.target_altitude} m")
+        self.in_air = True
         self.takeoff(self.target_altitude)
 
     def waypoint_transition(self):
         self.set_state(States.WAYPOINT)
-        print("waypoint transition")
         if self.has_waypoints:
             self.target_position = self.waypoints.pop(0)
             print('target position', self.target_position)
             self.cmd_position(self.target_position[0], self.target_position[1],
                               self.target_position[2], self.target_position[3])
-        elif self.has_mission_waypoints:
-            self.plan_next_mission_step()
+        elif self.has_mission_goals:
+            self.plan_mission_goal_transition()
 
     def landing_transition(self):
         self.set_state(States.LANDING)
-        print("landing transition")
         self.land()
 
     def disarming_transition(self):
         self.set_state(States.DISARMING)
-        print("disarm transition")
+        assert not self.in_air
         self.disarm()
         self.release_control()
 
     def manual_transition(self):
         self.set_state(States.MANUAL)
-        print("manual transition")
-        self.stop()
-        assert not self.has_mission_waypoints
+        assert not self.has_mission_goals
         self.in_mission = False
+        self.stop()
 
     def send_waypoints(self):
         print("Sending waypoints to simulator ...")
@@ -201,14 +203,12 @@ class MotionPlanning(Drone):
         self.connection._master.write(data)
 
     def download_map_transition(self):
-        print('Downloading map ...')
         self.set_state(States.DOWNLOAD_MAP_DATA)
 
         # Read in obstacle map
         self.map_data = np.loadtxt(self.colliders_file, delimiter=',', dtype='Float64', skiprows=2)
 
     def build_map_transition(self):
-        print('Building map ...')
         self.set_state(States.BUILD_MAP)
 
         # Define a grid for a particular altitude and safety margin around obstacles
@@ -248,8 +248,8 @@ class MotionPlanning(Drone):
         print('global home {0}, position {1}, local position {2} (differs by {3:.4} m)'.format(
             self.global_home, self.global_position, self.local_position, local_position_error))
 
-    def plan_path(self):
-        self.set_state(States.PLAN_MISSION)
+    def init_mission_transition(self):
+        self.set_state(States.INIT_MISSION)
         self.target_position[2] = self.target_altitude
 
         self.receive_and_set_home_position()
@@ -263,10 +263,10 @@ class MotionPlanning(Drone):
         self.add_mission_waypoint([-north_offset + 10, -east_offset, self.target_altitude, 0])
         self.add_mission_waypoint([-north_offset + 10, -east_offset + 10, self.target_altitude, 0])
 
-        self.plan_next_mission_step()
+    def plan_mission_goal_transition(self):
+        self.set_state(States.PLAN_MISSION_GOAL)
 
-    def plan_next_mission_step(self):
-        if not self.has_mission_waypoints:
+        if not self.has_mission_goals:
             print("No more mission waypoints.")
             return
 
@@ -422,7 +422,6 @@ if __name__ == "__main__":
 
     conn = MavlinkConnection('tcp:{0}:{1}'.format(args.host, args.port), timeout=60)
     drone = MotionPlanning(conn)
-    drone.set_verbose(args.verbose)
 
     time.sleep(1)
 
