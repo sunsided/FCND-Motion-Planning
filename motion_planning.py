@@ -47,7 +47,7 @@ class MotionPlanning(Drone):
 
         # map data
         self.grid = None  # type: Optional[np.ndarray]
-        self.heightmap = None  # type: Optional[np.ndarray]
+        self.height_map = None  # type: Optional[np.ndarray]
         self.grid_offset = (0., 0.)
         self.target_altitude = 5  # type: int
         self.safety_distance = 5  # type: int
@@ -311,7 +311,7 @@ class MotionPlanning(Drone):
         """
         print("North offset = {0}, east offset = {1}".format(north_offset, east_offset))
         self.grid = grid
-        self.heightmap = heightmap
+        self.height_map = heightmap
         self.grid_offset = (north_offset, east_offset)
 
 
