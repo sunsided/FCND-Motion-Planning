@@ -25,6 +25,7 @@ Waypoint = List[Union[List[float], Tuple[float, float, float, float], np.ndarray
 
 class States(Enum):
     MANUAL = auto()
+    DOWNLOAD_MAP = auto()
     ARMING = auto()
     TAKEOFF = auto()
     WAYPOINT = auto()
@@ -51,6 +52,7 @@ class MotionPlanning(Drone):
         self.flip_ud = np.array([1, 1, -1], dtype=float)
 
         # map data
+        self.map_data = None  # type: Optional[np.ndarray]
         self.grid = None  # type: Optional[np.ndarray]
         self.height_map = None  # type: Optional[np.ndarray]
         self.grid_offsets = (0., 0.)
@@ -64,6 +66,45 @@ class MotionPlanning(Drone):
         self.register_callback(MsgID.LOCAL_POSITION, self.local_position_callback)
         self.register_callback(MsgID.LOCAL_VELOCITY, self.velocity_callback)
         self.register_callback(MsgID.STATE, self.state_callback)
+
+    def state_callback(self):
+        if not self.in_mission:
+            return
+        if self.in_state(States.MANUAL):
+            self.download_map_transition()
+        elif self.in_state(States.DOWNLOAD_MAP):
+            self.arming_transition()
+        elif self.in_state(States.ARMING):
+            if self.armed:
+                self.plan_path()
+        elif self.in_state(States.PLANNING):
+            self.takeoff_transition()
+        elif self.in_state(States.DISARMING):
+            if ~self.armed & ~self.guided:
+                self.manual_transition()
+
+    def local_position_callback(self):
+        if self.in_state(States.TAKEOFF):
+            if -1.0 * self.local_position[2] > 0.95 * self.target_position[2]:
+                self.waypoint_transition()
+        elif self.in_state(States.WAYPOINT):
+            if self.close_to_target_ned(1.0):
+                if not self.mission_complete:
+                    self.waypoint_transition()
+                else:
+                    if np.linalg.norm(self.local_velocity[0:2]) < 1.0:
+                        self.landing_transition()
+
+    def velocity_callback(self):
+        if self.in_state(States.LANDING):
+            # This condition is problematic: Comparing to global home base height
+            # implies that we need to land on exactly the same height. The
+            # follow-up check makes it even worse. If we were to land on, say,
+            # a roof, this would never allow us to disarm the drone.
+            # TODO: Allow disarming when in rest.
+            if self.global_position[2] - self.global_home[2] < 0.1:
+                if abs(self.local_position[2]) < 0.01:
+                    self.disarming_transition()
 
     @property
     def mission_length(self) -> int:
@@ -104,42 +145,6 @@ class MotionPlanning(Drone):
         if self.verbose:
             print(f'Going from {self.flight_state} to {state}')
         self.flight_state = state
-
-    def local_position_callback(self):
-        if self.in_state(States.TAKEOFF):
-            if -1.0 * self.local_position[2] > 0.95 * self.target_position[2]:
-                self.waypoint_transition()
-        elif self.in_state(States.WAYPOINT):
-            if self.close_to_target_ned(1.0):
-                if not self.mission_complete:
-                    self.waypoint_transition()
-                else:
-                    if np.linalg.norm(self.local_velocity[0:2]) < 1.0:
-                        self.landing_transition()
-
-    def velocity_callback(self):
-        if self.in_state(States.LANDING):
-            # This condition is problematic: Comparing to global home base height
-            # implies that we need to land on exactly the same height. The
-            # follow-up check makes it even worse. If we were to land on, say,
-            # a roof, this would never allow us to disarm the drone.
-            # TODO: Allow disarming when in rest.
-            if self.global_position[2] - self.global_home[2] < 0.1:
-                if abs(self.local_position[2]) < 0.01:
-                    self.disarming_transition()
-
-    def state_callback(self):
-        if self.in_mission:
-            if self.in_state(States.MANUAL):
-                self.arming_transition()
-            elif self.in_state(States.ARMING):
-                if self.armed:
-                    self.plan_path()
-            elif self.in_state(States.PLANNING):
-                self.takeoff_transition()
-            elif self.in_state(States.DISARMING):
-                if ~self.armed & ~self.guided:
-                    self.manual_transition()
 
     def arming_transition(self):
         self.set_state(States.ARMING)
@@ -189,6 +194,13 @@ class MotionPlanning(Drone):
         # noinspection PyProtectedMember
         self.connection._master.write(data)
 
+    def download_map_transition(self):
+        print('Downloading map ...')
+        self.set_state(States.DOWNLOAD_MAP)
+
+        # Read in obstacle map
+        self.map_data = np.loadtxt(self.colliders_file, delimiter=',', dtype='Float64', skiprows=2)
+
     def plan_path(self):
         self.set_state(States.PLANNING)
         self.target_position[2] = self.target_altitude
@@ -214,11 +226,9 @@ class MotionPlanning(Drone):
         print('global home {0}, position {1}, local position {2} (differs by {3:.4} m)'.format(
             self.global_home, self.global_position, self.local_position, local_position_difference))
 
-        # Read in obstacle map
-        data = np.loadtxt(self.colliders_file, delimiter=',', dtype='Float64', skiprows=2)
-
         # Define a grid for a particular altitude and safety margin around obstacles
-        grid, heightmap, north_offset, east_offset = create_grid(data, self.target_altitude, self.safety_distance)
+        assert self.map_data is not None
+        grid, heightmap, north_offset, east_offset = create_grid(self.map_data, self.target_altitude, self.safety_distance)
         self.set_map(grid, heightmap, north_offset, east_offset)
 
         print("Generating mission ...")
