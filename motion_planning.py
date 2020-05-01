@@ -45,6 +45,9 @@ class MotionPlanning(Drone):
         self.flight_state = None  # type: Optional[States]
         self.verbose = False
 
+        # convencience vector to flip up with down
+        self.flip_ud = np.array([1, 1, -1], dtype=float)
+
         # map data
         self.grid = None  # type: Optional[np.ndarray]
         self.height_map = None  # type: Optional[np.ndarray]
@@ -63,8 +66,11 @@ class MotionPlanning(Drone):
     def set_verbose(self, verbose: bool):
         self.verbose = verbose
 
-    def close_to_target(self, deadband: float) -> bool:
+    def close_to_target_ne(self, deadband: float) -> bool:
         return np.linalg.norm(self.target_position[0:2] - self.local_position[0:2]) < deadband
+
+    def close_to_target_ned(self, deadband: float) -> bool:
+        return np.linalg.norm(self.target_position[0:3] - self.local_position[0:3] * self.flip_ud) < deadband
 
     def in_state(self, state: States) -> bool:
         return state == self.flight_state
@@ -79,7 +85,7 @@ class MotionPlanning(Drone):
             if -1.0 * self.local_position[2] > 0.95 * self.target_position[2]:
                 self.waypoint_transition()
         elif self.in_state(States.WAYPOINT):
-            if self.close_to_target(1.0):
+            if self.close_to_target_ned(1.0):
                 if len(self.waypoints) > 0:
                     self.waypoint_transition()
                 else:
@@ -88,6 +94,11 @@ class MotionPlanning(Drone):
 
     def velocity_callback(self):
         if self.in_state(States.LANDING):
+            # This condition is problematic: Comparing to global home base height
+            # implies that we need to land on exactly the same height. The
+            # follow-up check makes it even worse. If we were to land on, say,
+            # a roof, this would never allow us to disarm the drone.
+            # TODO: Allow disarming when in rest.
             if self.global_position[2] - self.global_home[2] < 0.1:
                 if abs(self.local_position[2]) < 0.01:
                     self.disarming_transition()
