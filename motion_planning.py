@@ -44,6 +44,7 @@ class MotionPlanning(Drone):
         super().__init__(connection)
 
         self.colliders_file = 'colliders.csv'
+        self.colliders_additional_file = 'colliders.additional.csv'
         self.target_position = np.array([0.0, 0.0, 0.0])
         self.in_mission = True
         self.in_air = False
@@ -57,6 +58,7 @@ class MotionPlanning(Drone):
 
         # map data
         self.map_data = None  # type: Optional[np.ndarray]
+        self.map_data_additional = None  # type: Optional[np.ndarray]
         self.grid = None  # type: Optional[np.ndarray]
         self.height_map = None  # type: Optional[np.ndarray]
         self.grid_offsets = (0., 0.)  # type: Tuple[float, float]
@@ -209,6 +211,7 @@ class MotionPlanning(Drone):
 
         # Read in obstacle map
         self.map_data = np.loadtxt(self.colliders_file, delimiter=',', dtype='Float64', skiprows=2)
+        self.map_data_additional = np.loadtxt(self.colliders_additional_file, delimiter=',', dtype='Float64', skiprows=2)
 
     def build_map_transition(self):
         self.set_state(States.BUILD_MAP)
@@ -217,6 +220,22 @@ class MotionPlanning(Drone):
         assert self.map_data is not None
         grid, heightmap, north_offset, east_offset = create_grid(self.map_data, self.target_altitude,
                                                                  self.safety_distance, self.safety_altitude)
+
+        # In case I didn't mention the simulator is broken, let me. :)
+        # The provided colliders.txt doesn't fit the data in the simulator, and the data exported
+        # from the simulator lacks details available in the provided code.
+        # But, as the old saying goes, two maps are better one and so we just merge both files,
+        # take the highest obstacle at each location and hope for the best.
+        grid2, heightmap2, north_offset2, east_offset2 = create_grid(self.map_data_additional, self.target_altitude,
+                                                                     self.safety_distance, self.safety_altitude)
+        assert grid.shape == grid2.shape
+        assert north_offset == north_offset2
+        assert east_offset == east_offset2
+
+        for i in range(grid.shape[0]):
+            for j in range(grid.shape[1]):
+                grid[i, j] = max(grid[i, j], grid2[i, j])
+
         self.set_map(grid, heightmap, north_offset, east_offset)
 
     def receive_and_set_home_position(self) -> LatLon:
