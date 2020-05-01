@@ -13,6 +13,7 @@ from typing import Optional, Union, Tuple, List, NamedTuple
 
 import numpy as np
 
+from pruning_utils import line_test
 from planning_utils import a_star, heuristic, create_grid, GridPosition
 from udacidrone import Drone
 from udacidrone.connection import MavlinkConnection
@@ -334,7 +335,13 @@ class MotionPlanning(Drone):
         # This does create a lot of wasted effort, but will ensure that we're not flying
         # long distances in an awkward orientation
         self.interpolate_headings(waypoints, fix_first=True)
-        waypoints = self.prune_waypoints(waypoints)
+
+        # Prune by using collinearity tests first; quickly reduces the set of candidates.
+        waypoints = self.prune_waypoints_fast(waypoints)
+
+        # Prune by doing raycasts next; here, we need to march all boxes on the line,
+        # which involves significantly more tests.
+        waypoints = self.prune_waypoints_raycast(waypoints, iterations=2)
 
         # Set self.waypoints
         self.waypoints = waypoints
@@ -420,9 +427,9 @@ class MotionPlanning(Drone):
             waypoints[0][3] = waypoints[1][3] if fix_first else waypoints[0][3]
             waypoints[-1][3] = waypoints[-2][3] if copy_last else waypoints[-1][3]
 
-    def prune_waypoints(self, path: Waypoints) -> Waypoints:
+    def prune_waypoints_fast(self, path: Waypoints) -> Waypoints:
         """
-        Culls the waypoints by removing collinear points.
+        Prunes the waypoints by removing collinear points.
         :param path: The waypoints to cull.
         :return: The pruned waypoints.
         """
@@ -431,16 +438,11 @@ class MotionPlanning(Drone):
         # over it. Because of that, we create a copy first.
         pruned_path = [p for p in path]
 
-        (north_offset, east_offset) = self.grid_offsets
-
-        def point(waypoint):
-            return int(waypoint[0] - north_offset), int(waypoint[1] - east_offset)
-
         i = 0
         while i < len(pruned_path) - 2:
-            p1 = point(pruned_path[i])
-            p2 = point(pruned_path[i + 1])
-            p3 = point(pruned_path[i + 2])
+            p1 = self.point(pruned_path[i])
+            p2 = self.point(pruned_path[i + 1])
+            p3 = self.point(pruned_path[i + 2])
 
             # If the three points are not collinear, check the next
             # thee points by setting the middle point as the new start.
@@ -464,6 +466,40 @@ class MotionPlanning(Drone):
               p2[0] * (p3[1] - p1[1]) + \
               p3[0] * (p1[1] - p2[1])
         return det == 0
+
+    def point(self, waypoint: Waypoint) -> GridPosition:
+        (north_offset, east_offset) = self.grid_offsets
+        return int(waypoint[0] - north_offset), int(waypoint[1] - east_offset)
+
+    def prune_waypoints_raycast(self, path: Waypoints, iterations: int = 1) -> Waypoints:
+        """
+        Prunes waypoints by employing raycasting between subsequent points.
+        :param path: The waypoints to prune.
+        :param int: The number of iterations to run the pruning code.
+        :return: The pruned waypoints.
+        """
+
+        # We're gong to mutate the list as we iterate
+        # over it. Because of that, we create a copy first.
+        pruned_path = [p for p in path]
+
+        while iterations > 0:
+            iterations -= 1
+
+            i = 0
+            while i < len(pruned_path) - 2:
+                p1 = self.point(pruned_path[i])
+                p3 = self.point(pruned_path[i + 2])
+
+                # TODO: In order to speed up things, we may decide to only ever look a certain maximum distance ahead.
+
+                # If a line can be cast to a point two ahead away of us, we can delete the middleman.
+                if line_test(self.grid, p1, p3):
+                    pruned_path.remove(pruned_path[i + 1])
+                    continue
+                i += 1
+
+        return pruned_path
 
     def start(self):
         self.start_log("Logs", "NavLog.txt")
