@@ -244,6 +244,11 @@ be built into a path planner:
   altitude, as the probability of hurting someone in case
   of an accident may be reduced.
 
+#### Updating the A\* planner
+
+As of the starter code, the provided A\* planner only supported horizontal
+and vertical movement. Diagonal movement was added with a cost of `sqrt(2)`.
+
 ## Mission complete
 
 At the end of the day, always park your drone in a safe spot

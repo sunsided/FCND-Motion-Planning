@@ -8,6 +8,7 @@ import time
 import msgpack
 import re
 from enum import Enum, auto
+from timeit import default_timer as timer
 from typing import Optional, Union, Tuple, List, NamedTuple
 
 import numpy as np
@@ -296,10 +297,13 @@ class MotionPlanning(Drone):
         grid_goal = (int(mission_waypoint[0] - north_offset), int(mission_waypoint[1] - east_offset))
 
         # Run A* to find a path from start to goal
-        # TODO: add diagonal motions with a cost of sqrt(2) to your A* implementation
-        # or move to a different search space such as a graph (not done here)
+        # or move to a different search space such as a graph (not done here).
         print('Local Start and Goal: ', grid_start, grid_goal)
+
+        start = timer()
         path, _ = a_star(self.grid, heuristic, grid_start, grid_goal)
+        print(f'Path planning to goal completed in {timer() - start:.3} s.')
+
         # TODO: prune path to minimize number of waypoints
         # TODO (if you're feeling ambitious): Try a different approach altogether!
 

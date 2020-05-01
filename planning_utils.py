@@ -1,6 +1,9 @@
 from enum import Enum
 from queue import PriorityQueue
+from typing import Tuple
 import numpy as np
+
+SQRT2 = np.sqrt(2)
 
 
 def create_grid(data, drone_altitude, safety_distance):
@@ -55,39 +58,56 @@ class Action(Enum):
     is the cost of performing the action.
     """
 
-    WEST = (0, -1, 1)
-    EAST = (0, 1, 1)
-    NORTH = (-1, 0, 1)
-    SOUTH = (1, 0, 1)
+    WEST = (0, -1, 1.0)
+    EAST = (0, 1, 1.0)
+    NORTH = (-1, 0, 1.0)
+    SOUTH = (1, 0, 1.0)
+
+    NORTH_WEST = (-1, -1, SQRT2)
+    NORTH_EAST = (-1, 1, SQRT2)
+    SOUTH_WEST = (1, -1, SQRT2)
+    SOUTH_EAST = (1, 1, SQRT2)
 
     @property
-    def cost(self):
+    def cost(self) -> float:
         return self.value[2]
 
     @property
-    def delta(self):
-        return (self.value[0], self.value[1])
+    def delta(self) -> Tuple[int, int]:
+        return self.value[0], self.value[1]
 
 
 def valid_actions(grid, current_node):
     """
     Returns a list of valid actions given a grid and current node.
     """
-    valid_actions = list(Action)
+    valid_actions = []
     n, m = grid.shape[0] - 1, grid.shape[1] - 1
     x, y = current_node
 
-    # check if the node is off the grid or
-    # it's an obstacle
+    north_clear = x > 0 and grid[x - 1, y] == 0
+    south_clear = x + 1 < n and grid[x + 1, y] == 0
+    west_clear = y > 0 and grid[x, y - 1] == 0
+    east_clear = y + 1 < m and grid[x, y + 1] == 0
 
-    if x - 1 < 0 or grid[x - 1, y] == 1:
-        valid_actions.remove(Action.NORTH)
-    if x + 1 > n or grid[x + 1, y] == 1:
-        valid_actions.remove(Action.SOUTH)
-    if y - 1 < 0 or grid[x, y - 1] == 1:
-        valid_actions.remove(Action.WEST)
-    if y + 1 > m or grid[x, y + 1] == 1:
-        valid_actions.remove(Action.EAST)
+    if north_clear:
+        valid_actions.append(Action.NORTH)
+        if east_clear:
+            valid_actions.append(Action.NORTH_EAST)
+        if west_clear:
+            valid_actions.append(Action.NORTH_WEST)
+
+    if south_clear:
+        valid_actions.append(Action.SOUTH)
+        if east_clear:
+            valid_actions.append(Action.SOUTH_EAST)
+        if west_clear:
+            valid_actions.append(Action.SOUTH_WEST)
+
+    if west_clear:
+        valid_actions.append(Action.WEST)
+    if east_clear:
+        valid_actions.append(Action.EAST)
 
     return valid_actions
 
