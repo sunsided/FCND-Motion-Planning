@@ -7,12 +7,14 @@ from typing import Optional, Tuple
 from planning_utils import create_grid
 
 FILENAME = 'colliders.csv'
+FILENAME2 = 'colliders.additional.csv'
 DPI = 72
 
 plt.rcParams['figure.figsize'] = 12, 10
 plt.rcParams['figure.dpi'] = DPI
 
 data = np.loadtxt(FILENAME, delimiter=',', dtype='Float64', skiprows=2)
+data_additional = np.loadtxt(FILENAME2, delimiter=',', dtype='Float64', skiprows=2)
 
 
 def configure_axes(grid: np.ndarray, ax: plt.Axes, north_offset: float, east_offset: float):
@@ -56,6 +58,21 @@ figure = plot_grid('Height map', height_map, north_offset, east_offset, cc.cm.bl
 
 figure.tight_layout()
 figure.savefig(os.path.join('misc', 'heightmap_25.png'), dpi=DPI)
+
+
+_, height_map2, north_offset2, east_offset2 = create_grid(data_additional, 0, 0, 0)
+assert height_map.shape == height_map2.shape
+assert north_offset == north_offset2
+assert east_offset == east_offset2
+
+for i in range(height_map.shape[0]):
+    for j in range(height_map.shape[1]):
+        height_map[i, j] = max(height_map[i, j], height_map2[i, j])
+
+figure = plot_grid('Height map (merged)', height_map, north_offset, east_offset, cc.cm.blues, show_colorbar=True, vmax=25)
+figure.tight_layout()
+figure.savefig(os.path.join('misc', 'heightmap_merged_25.png'), dpi=DPI)
+
 
 altitudes = [0, 10, 20]
 safety_distances = [0, 5]
