@@ -1,4 +1,4 @@
-# FCND - 3D Motion Planning
+# 3D Motion Planning in a simulated environment
 ![Quad Image](./misc/enroute.png)
 
 This project is a continuation of the [Backyard Flyer](https://github.com/sunsided/FCND-Backyard-Flyer)
