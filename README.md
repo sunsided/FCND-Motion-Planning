@@ -186,3 +186,48 @@ The coordinates obtained this way are then set as the drone's home position
 via a call to `set_home_position()`. We can use this information later on
 in combination with the grid boundaries of the map to accurately position
 us in any grid cell.
+
+#### Setting the goal position(s)
+
+A couple of interesting goal positions were selected by flying around
+the map in the simulator:
+
+- `37.796612` north, `-122.398877` east, `1.0 m` altitude: 
+  This is within a u-shaped building accessible from the street.
+- `37.790642` north, `-122.397818` east, `1.0 m` altitude:
+  Just south of the home position and south-east of the
+  backyard enclosed by the tall building described below.
+  
+Some more challenging positions are:
+  
+- `37.787681` north, `-122.399856` east, `1.0 m` altitude:
+  This is close to the boundary of the map and only reachable
+  when flying over a building.
+- `37.796141` north, `-122.394831` east, `2.5 m` altitude:
+  This is within an otherworldly lake near the harbor that
+  has some nice trees growing out of it.
+- `37.793106` north, `-122.394933` east, `1.0 m` altitude:
+  Like the building on the edge of the map, this spot can
+  only be reached by flying over a building. In order to do
+  so, we need to be able to fly up to about `70 m` altitude.
+
+See [LOCATIONS.md](LOCATIONS.md) for a visualization of these spots.
+
+Thinking of these positions, there are some ideas that might
+be built into a path planner:
+
+- Flying in high altitudes is dangerous: If for some reason
+  the drone loses control, it might plummet to the ground,
+  possibly killing people. As such, staying at low altitudes
+  should always be cheaper than going (too) high.
+- On the contrary, flying over buildings with a flat roof
+  might be wished for if the drone is already at a higher
+  altitude, as the probability of hurting someone in case
+  of an accident may be reduced.
+
+## Mission complete
+
+At the end of the day, always park your drone in a safe spot
+(and don't forget to disarm it).
+
+![Package delivered!](misc/how-not-to-park-your-drone.jpg)
