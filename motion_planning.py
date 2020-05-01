@@ -20,6 +20,7 @@ from udacidrone.frame_utils import global_to_local
 
 
 LatLon = NamedTuple('LatLon', [('latitude', float), ('longitude', float)])
+Waypoint = List[Union[List[float], Tuple[float, float, float, float], np.ndarray]]
 
 
 class States(Enum):
@@ -39,8 +40,9 @@ class MotionPlanning(Drone):
 
         self.colliders_file = 'colliders.csv'
         self.target_position = np.array([0.0, 0.0, 0.0])
-        self.waypoints = []
         self.in_mission = True
+        self.mission_waypoints = []  # Set of waypoints to reach for achieving the mission
+        self.waypoints = []            # Set of waypoints to reach the mission coordinates
         self.check_state = {}
         self.flight_state = None  # type: Optional[States]
         self.verbose = False
@@ -51,7 +53,7 @@ class MotionPlanning(Drone):
         # map data
         self.grid = None  # type: Optional[np.ndarray]
         self.height_map = None  # type: Optional[np.ndarray]
-        self.grid_offset = (0., 0.)
+        self.grid_offsets = (0., 0.)
         self.target_altitude = 5  # type: int
         self.safety_distance = 5  # type: int
 
@@ -62,6 +64,29 @@ class MotionPlanning(Drone):
         self.register_callback(MsgID.LOCAL_POSITION, self.local_position_callback)
         self.register_callback(MsgID.LOCAL_VELOCITY, self.velocity_callback)
         self.register_callback(MsgID.STATE, self.state_callback)
+
+    @property
+    def mission_length(self) -> int:
+        return len(self.mission_waypoints)
+
+    @property
+    def has_mission_waypoints(self) -> bool:
+        return self.mission_length > 0
+
+    @property
+    def has_waypoints(self) -> bool:
+        return len(self.waypoints) > 0
+
+    @property
+    def mission_complete(self) -> bool:
+        return not (self.has_mission_waypoints or self.has_waypoints)
+
+    def add_mission_waypoint(self, waypoint: Waypoint) -> None:
+        self.mission_waypoints.append(waypoint)
+
+    def get_next_mission_waypoint(self) -> Waypoint:
+        assert self.has_mission_waypoints
+        return self.mission_waypoints.pop(0)
 
     def set_verbose(self, verbose: bool):
         self.verbose = verbose
@@ -86,7 +111,7 @@ class MotionPlanning(Drone):
                 self.waypoint_transition()
         elif self.in_state(States.WAYPOINT):
             if self.close_to_target_ned(1.0):
-                if len(self.waypoints) > 0:
+                if not self.mission_complete:
                     self.waypoint_transition()
                 else:
                     if np.linalg.norm(self.local_velocity[0:2]) < 1.0:
@@ -130,9 +155,12 @@ class MotionPlanning(Drone):
     def waypoint_transition(self):
         self.set_state(States.WAYPOINT)
         print("waypoint transition")
-        self.target_position = self.waypoints.pop(0)
-        print('target position', self.target_position)
-        self.cmd_position(self.target_position[0], self.target_position[1], self.target_position[2], self.target_position[3])
+        if self.has_waypoints:
+            self.target_position = self.waypoints.pop(0)
+            print('target position', self.target_position)
+            self.cmd_position(self.target_position[0], self.target_position[1], self.target_position[2], self.target_position[3])
+        elif self.has_mission_waypoints:
+            self.plan_next_mission_step()
 
     def landing_transition(self):
         self.set_state(States.LANDING)
@@ -149,6 +177,7 @@ class MotionPlanning(Drone):
         self.set_state(States.MANUAL)
         print("manual transition")
         self.stop()
+        assert not self.has_mission_waypoints
         self.in_mission = False
 
     def send_waypoints(self):
@@ -192,7 +221,23 @@ class MotionPlanning(Drone):
         grid, heightmap, north_offset, east_offset = create_grid(data, self.target_altitude, self.safety_distance)
         self.set_map(grid, heightmap, north_offset, east_offset)
 
-        print("Searching for a path ...")
+        print("Generating mission ...")
+
+        # Set goal as some arbitrary position on the grid
+        # TODO: adapt to set goal as latitude / longitude position and convert
+        self.add_mission_waypoint([-north_offset + 10, -east_offset, self.target_altitude, 0])
+        self.add_mission_waypoint([-north_offset + 10, -east_offset + 10, self.target_altitude, 0])
+
+        self.plan_next_mission_step()
+
+    def plan_next_mission_step(self):
+        if not self.has_mission_waypoints:
+            print("No more mission waypoints.")
+            return
+
+        print(f"Mission has {self.mission_length} waypoint{'s' if self.mission_length != 1 else ''} remaining. "
+              "Searching for a path ...")
+        (north_offset, east_offset) = self.grid_offsets
 
         # Define starting point on the grid (this is just grid center)
         # Rubric point: convert start position to current position rather than map center
@@ -203,7 +248,8 @@ class MotionPlanning(Drone):
 
         # Set goal as some arbitrary position on the grid
         # TODO: adapt to set goal as latitude / longitude position and convert
-        grid_goal = (-north_offset + 10, -east_offset + 10)
+        mission_waypoint = self.get_next_mission_waypoint()
+        grid_goal = (mission_waypoint[0], mission_waypoint[1])
 
         # Run A* to find a path from start to goal
         # TODO: add diagonal motions with a cost of sqrt(2) to your A* implementation
@@ -216,6 +262,7 @@ class MotionPlanning(Drone):
         # Convert path to waypoints
         waypoints = [self.to_waypoint(p, north_offset, east_offset, self.target_altitude) for p in path]
         self.interpolate_headings(waypoints, fix_first=True)
+
         # Set self.waypoints
         self.waypoints = waypoints
         # TODO: send waypoints to sim (this is just for visualization of waypoints)
@@ -259,7 +306,7 @@ class MotionPlanning(Drone):
         return (theta + np.pi) % (2*np.pi) - np.pi
 
     @staticmethod
-    def interpolate_headings(waypoints: List[Union[List[float], Tuple[float, float, float, float], np.ndarray]],
+    def interpolate_headings(waypoints: Waypoint,
                              fix_first: bool = False, fix_last: bool = True) -> None:
         """
         Interpolates headings between two adjacent waypoints.
@@ -323,14 +370,15 @@ class MotionPlanning(Drone):
         print("North offset = {0}, east offset = {1}".format(north_offset, east_offset))
         self.grid = grid
         self.height_map = heightmap
-        self.grid_offset = (north_offset, east_offset)
+        self.grid_offsets = (north_offset, east_offset)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--port', type=int, default=5760, help='Port number')
     parser.add_argument('--host', type=str, default='127.0.0.1', help="host address, i.e. '127.0.0.1'")
-    parser.add_argument('-v', '--verbose', dest='verbose', default=False, action='store_true', help='Enables verbose logging')
+    parser.add_argument('-v', '--verbose', dest='verbose', default=False, action='store_true',
+                        help='Enables verbose logging')
     args = parser.parse_args()
 
     conn = MavlinkConnection('tcp:{0}:{1}'.format(args.host, args.port), timeout=60)

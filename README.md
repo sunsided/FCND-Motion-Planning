@@ -216,16 +216,19 @@ See [LOCATIONS.md](LOCATIONS.md) for a visualization of these spots.
 Thinking of these positions, there are some ideas that might
 be built into a path planner:
 
-- Flying in high altitudes is dangerous: If for some reason
-  the drone loses control, it might plummet to the ground,
-  possibly killing people. As such, staying at low altitudes
-  should always be cheaper than going (too) high.
+- Flying in high altitudes might be dangerous within cities: 
+  If for some reason the drone loses control, it might plummet
+  to the ground, possibly injuring someone. As such, staying at low
+  altitudes should always be cheaper than going (too) high.
   This requires the planner not only to know the map, but also the
   remaining resources such as battery power (since
   every positive rotor acceleration causes current to spike, going up
   and changing directions is naturally more expensive than going down
   or in a straight line).
-- On the contrary, flying over buildings with a flat roof
+- Flying too close to the ground is dangerous as well; because of that,
+  the planner should use a higher cost for all paths outside an altitude 
+  "sweet spot" (or range).
+- A bit esoteric, but flying over buildings with a flat roof
   might be wished for if the drone is already at a higher
   altitude, as the probability of hurting someone in case
   of an accident may be reduced.
