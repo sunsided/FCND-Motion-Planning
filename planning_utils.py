@@ -80,40 +80,18 @@ class Action(Enum):
     def delta(self) -> Tuple[int, int]:
         return self.value[0], self.value[1]
 
-
-def valid_actions(grid, current_node):
-    """
-    Returns a list of valid actions given a grid and current node.
-    """
-    actions = []  # type: List[Action]
-    n, m = grid.shape[0] - 1, grid.shape[1] - 1
-    x, y = current_node
-
-    north_clear = x > 0 and grid[x - 1, y] == 0
-    south_clear = x + 1 < n and grid[x + 1, y] == 0
-    west_clear = y > 0 and grid[x, y - 1] == 0
-    east_clear = y + 1 < m and grid[x, y + 1] == 0
-
-    if north_clear:
-        actions.append(Action.NORTH)
-        if east_clear:
-            actions.append(Action.NORTH_EAST)
-        if west_clear:
-            actions.append(Action.NORTH_WEST)
-
-    if south_clear:
-        actions.append(Action.SOUTH)
-        if east_clear:
-            actions.append(Action.SOUTH_EAST)
-        if west_clear:
-            actions.append(Action.SOUTH_WEST)
-
-    if west_clear:
-        actions.append(Action.WEST)
-    if east_clear:
-        actions.append(Action.EAST)
-
-    return actions
+    def is_valid(self, grid: np.ndarray, current_node: Position) -> bool:
+        """
+        Determines whether the specified action is valid, given the the current node and the grid.
+        :param action: The action to inspect.
+        :param grid: The grid to verify the action for.
+        :param current_node: The current node to which to apply the action.
+        :return: True if the action is admissible; False otherwise.
+        """
+        n, m = grid.shape[0] - 1, grid.shape[1] - 1
+        x = current_node[0] + self.delta[0]
+        y = current_node[1] + self.delta[1]
+        return (0 <= x < n) and (0 <= y < m) and (grid[x, y] == 0)
 
 
 def a_star(grid: np.ndarray, h: HeuristicFunction, start: Position, goal: Position)\
@@ -130,23 +108,28 @@ def a_star(grid: np.ndarray, h: HeuristicFunction, start: Position, goal: Positi
     queue.put((0, start))
     visited = set(start)
 
+    # noinspection PyTypeChecker
+    possible_actions = list(Action)  # type: List[Action]
+
     branch = {}  # type: Dict[Position, Tuple[float, Position, Action]]
     found = False
 
     while not queue.empty():
         item = queue.get()
         current_node = item[1]
-        if current_node == start:
-            current_cost = 0.0
-        else:
-            current_cost = branch[current_node][0]
 
         if current_node == goal:
             print('Found a path.')
             found = True
             break
+
+        if current_node != start:
+            current_cost = branch[current_node][0]
         else:
-            for action in valid_actions(grid, current_node):
+            current_cost = 0.0
+
+        for action in possible_actions:
+            if action.is_valid(grid, current_node):
                 # get the tuple representation
                 da = action.delta
                 next_node = (current_node[0] + da[0], current_node[1] + da[1])
